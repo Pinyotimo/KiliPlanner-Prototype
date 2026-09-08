@@ -10,7 +10,7 @@ import {
   useMap,
 } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
-import type { LeafletMouseEvent, Marker as LeafletMarker } from "leaflet";
+import type { LeafletMouseEvent, Marker as LeafletMarker, LatLngBoundsExpression } from "leaflet";
 import {
   kilimaniBoundary,
   KILIMANI_CENTER,
@@ -26,6 +26,12 @@ interface MapViewProps {
 }
 
 type LatLngPair = [number, number];
+
+// Tight bounding box roughly around Kilimani Ward coordinates
+const KILIMANI_BOUNDS: LatLngBoundsExpression = [
+  [-1.3050, 36.7700], // Southwest coordinate
+  [-1.2750, 36.8100], // Northeast coordinate
+];
 
 function ClickHandler({
   onValidClick,
@@ -63,7 +69,6 @@ function ClickHandler({
   );
 }
 
-/** Component that adds a custom control button to center on user location */
 function LocationButton() {
   const map = useMap();
   const [locating, setLocating] = useState(false);
@@ -117,6 +122,9 @@ export default function MapView({ issues, onValidClick }: MapViewProps) {
     <MapContainer
       center={KILIMANI_CENTER}
       zoom={KILIMANI_DEFAULT_ZOOM}
+      minZoom={14}
+      maxBounds={KILIMANI_BOUNDS}
+      maxBoundsViscosity={1.0}
       className="map-container"
     >
       <TileLayer
@@ -130,7 +138,7 @@ export default function MapView({ issues, onValidClick }: MapViewProps) {
           color: "#111827",
           weight: 2,
           fillColor: "#3b82f6",
-          fillOpacity: 0.05,
+          fillOpacity: 0.08,
         }}
       />
 
@@ -147,18 +155,21 @@ export default function MapView({ issues, onValidClick }: MapViewProps) {
             }}
           >
             <Popup>
-              <div className="text-sm">
-                <p className="font-semibold">
-                  {CATEGORY_LABELS[issue.category]}
-                </p>
-                <p>{issue.description}</p>
-                {issue.address && (
-                  <p className="text-gray-500">{issue.address}</p>
+              <div className="text-sm max-w-xs">
+                <p className="font-semibold">{CATEGORY_LABELS[issue.category]}</p>
+                <p className="mb-2">{issue.description}</p>
+                {issue.photo_base64 && (
+                  <img
+                    src={issue.photo_base64}
+                    alt="Report attachments"
+                    className="w-full h-32 object-cover rounded-md mb-2 border border-gray-200"
+                  />
                 )}
-                <p className="text-gray-400 text-xs">
+                {issue.address && <p className="text-gray-500 text-xs">{issue.address}</p>}
+                <p className="text-gray-400 text-[10px]">
                   {new Date(issue.created_at).toLocaleString()}
                 </p>
-              </div>
+              </div>  
             </Popup>
           </CircleMarker>
         ))}
