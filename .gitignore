@@ -5,7 +5,8 @@ dist
 node_modules/
 .env
 .env.*
-.env.example
+
 dist/
 build/
 .vscode/
+.env.example
