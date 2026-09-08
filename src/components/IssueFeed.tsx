@@ -1,5 +1,6 @@
 import type { Issue } from "../types/issue";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "../types/issue";
+import CommentSection from "./CommentSection";
 
 interface IssueFeedProps {
   issues: Issue[];
@@ -98,6 +99,9 @@ export default function IssueFeed({ issues, onReportClick }: IssueFeedProps) {
                   </span>
                 )}
               </div>
+
+              {/* Realtime Comment Section */}
+              <CommentSection issueId={issue.id} />
             </div>
           ))}
         </div>
