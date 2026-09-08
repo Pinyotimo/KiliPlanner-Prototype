@@ -7,7 +7,9 @@ import {
   Popup,
   CircleMarker,
   useMapEvents,
+  useMap,
 } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
 import type { LeafletMouseEvent, Marker as LeafletMarker } from "leaflet";
 import {
   kilimaniBoundary,
@@ -20,25 +22,17 @@ import { CATEGORY_COLORS, CATEGORY_LABELS } from "../types/issue";
 
 interface MapViewProps {
   issues: Issue[];
-  /** Called with (lat, lng) only when the click lands inside the boundary. */
   onValidClick: (lat: number, lng: number) => void;
 }
 
 type LatLngPair = [number, number];
 
-/**
- * Invisible helper component — react-leaflet's useMapEvents hook only works
- * inside a component rendered as a child of MapContainer, so the click
- * handling logic lives here rather than in MapView itself.
- */
 function ClickHandler({
   onValidClick,
 }: {
   onValidClick: (lat: number, lng: number) => void;
 }) {
-  const [rejectedPoint, setRejectedPoint] = useState<LatLngPair | null>(
-    null
-  );
+  const [rejectedPoint, setRejectedPoint] = useState<LatLngPair | null>(null);
   const markerRef = useRef<LeafletMarker | null>(null);
 
   useMapEvents({
@@ -69,6 +63,55 @@ function ClickHandler({
   );
 }
 
+/** Component that adds a custom control button to center on user location */
+function LocationButton() {
+  const map = useMap();
+  const [locating, setLocating] = useState(false);
+
+  function handleLocate() {
+    setLocating(true);
+    map.locate({ setView: true, maxZoom: 16 });
+  }
+
+  useEffect(() => {
+    function onLocationFound(e: any) {
+      setLocating(false);
+      if (!isInsideKilimani(e.latlng.lat, e.latlng.lng)) {
+        alert("Your current location is outside Kilimani Ward.");
+      }
+    }
+
+    function onLocationError(e: any) {
+      setLocating(false);
+      alert("Unable to retrieve your location: " + e.message);
+    }
+
+    map.on("locationfound", onLocationFound);
+    map.on("locationerror", onLocationError);
+
+    return () => {
+      map.off("locationfound", onLocationFound);
+      map.off("locationerror", onLocationError);
+    };
+  }, [map]);
+
+  return (
+    <div className="leaflet-top leaflet-left !top-20">
+      <div className="leaflet-control leaflet-bar">
+        <button
+          type="button"
+          onClick={handleLocate}
+          disabled={locating}
+          title="Find my location"
+          className="bg-white hover:bg-gray-100 text-gray-800 font-bold p-2 text-xs flex items-center justify-center w-8 h-8 cursor-pointer disabled:opacity-50"
+        >
+          {locating ? "⌛" : "📍"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function MapView({ issues, onValidClick }: MapViewProps) {
   return (
     <MapContainer
@@ -91,35 +134,38 @@ export default function MapView({ issues, onValidClick }: MapViewProps) {
         }}
       />
 
-      {issues.map((issue) => (
-        <CircleMarker
-          key={issue.id}
-          center={[issue.lat, issue.lng]}
-          radius={8}
-          pathOptions={{
-            color: CATEGORY_COLORS[issue.category],
-            fillColor: CATEGORY_COLORS[issue.category],
-            fillOpacity: 0.85,
-          }}
-        >
-          <Popup>
-            <div className="text-sm">
-              <p className="font-semibold">
-                {CATEGORY_LABELS[issue.category]}
-              </p>
-              <p>{issue.description}</p>
-              {issue.address && (
-                <p className="text-gray-500">{issue.address}</p>
-              )}
-              <p className="text-gray-400 text-xs">
-                {new Date(issue.created_at).toLocaleString()}
-              </p>
-            </div>
-          </Popup>
-        </CircleMarker>
-      ))}
+      <MarkerClusterGroup chunkedLoading>
+        {issues.map((issue) => (
+          <CircleMarker
+            key={issue.id}
+            center={[issue.lat, issue.lng]}
+            radius={8}
+            pathOptions={{
+              color: CATEGORY_COLORS[issue.category],
+              fillColor: CATEGORY_COLORS[issue.category],
+              fillOpacity: 0.85,
+            }}
+          >
+            <Popup>
+              <div className="text-sm">
+                <p className="font-semibold">
+                  {CATEGORY_LABELS[issue.category]}
+                </p>
+                <p>{issue.description}</p>
+                {issue.address && (
+                  <p className="text-gray-500">{issue.address}</p>
+                )}
+                <p className="text-gray-400 text-xs">
+                  {new Date(issue.created_at).toLocaleString()}
+                </p>
+              </div>
+            </Popup>
+          </CircleMarker>
+        ))}
+      </MarkerClusterGroup>
 
       <ClickHandler onValidClick={onValidClick} />
+      <LocationButton />
     </MapContainer>
   );
 }

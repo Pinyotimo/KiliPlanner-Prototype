@@ -51,6 +51,7 @@ export default function ReportForm({
   const [reporterEmail, setReporterEmail] = useState("");
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [rateLimited, setRateLimited] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const subLabel = subDetailLabel(category);
@@ -68,6 +69,8 @@ export default function ReportForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitting || rateLimited) return;
+
     setError(null);
 
     if (!description.trim()) {
@@ -99,7 +102,10 @@ export default function ReportForm({
       return;
     }
 
+    // FR-6.2: Soft rate-limiting client-side to avoid rapid double posts
+    setRateLimited(true);
     onSubmitted();
+    setTimeout(() => setRateLimited(false), 5000);
   }
 
   return (
@@ -119,13 +125,12 @@ export default function ReportForm({
 
         <p className="text-xs text-gray-500 mb-4">
           {lat.toFixed(5)}, {lng.toFixed(5)}
+          {accuracyMeters && ` (±${Math.round(accuracyMeters)}m)`}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-sm font-medium mb-1">
-              Category
-            </label>
+            <label className="block text-sm font-medium mb-1">Category</label>
             <select
               value={category}
               onChange={(e) => {
@@ -233,9 +238,13 @@ export default function ReportForm({
             <button
               type="submit"
               className="px-4 py-2 text-sm rounded-md bg-blue-600 text-white disabled:opacity-50"
-              disabled={submitting}
+              disabled={submitting || rateLimited}
             >
-              {submitting ? "Submitting…" : "Submit report"}
+              {submitting
+                ? "Submitting…"
+                : rateLimited
+                ? "Please wait…"
+                : "Submit report"}
             </button>
           </div>
         </form>

@@ -1,52 +1,23 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import MapView from "./components/MapView";
 import ReportForm from "./components/ReportForm";
-import { supabase } from "./lib/supabaseClient";
-import type { Issue } from "./types/issue";
 import StatsPanel from "./components/StatsPanel";
+import FilterBar from "./components/FilterBar";
+import { useIssues } from "./hooks/useIssues";
 
 type PendingPoint = { lat: number; lng: number };
 
 export default function App() {
-  const [issues, setIssues] = useState<Issue[]>([]);
+  const {
+    issues,
+    selectedCategory,
+    setSelectedCategory,
+    selectedStatus,
+    setSelectedStatus,
+  } = useIssues();
+
   const [pendingPoint, setPendingPoint] = useState<PendingPoint | null>(null);
   const [justSubmitted, setJustSubmitted] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function loadIssues() {
-      const { data, error } = await supabase
-        .from("issues")
-        .select("*")
-        .eq("status", "open")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Failed to load issues:", error.message);
-        return;
-      }
-      if (isMounted && data) setIssues(data as Issue[]);
-    }
-
-    loadIssues();
-
-    const channel = supabase
-      .channel("issues-changes")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "issues" },
-        (payload) => {
-          setIssues((current) => [payload.new as Issue, ...current]);
-        },
-      )
-      .subscribe();
-
-    return () => {
-      isMounted = false;
-      supabase.removeChannel(channel);
-    };
-  }, []);
 
   function handleValidClick(lat: number, lng: number) {
     setPendingPoint({ lat, lng });
@@ -63,9 +34,21 @@ export default function App() {
   }
 
   return (
-    <div className="relative">
+    <div className="relative h-screen w-screen overflow-hidden">
+      {/* Interactive Map */}
       <MapView issues={issues} onValidClick={handleValidClick} />
 
+      {/* Top Left Floating Filter Controls */}
+      <div className="absolute top-4 left-14 z-[1000] max-w-[calc(100vw-22rem)] hidden sm:block">
+        <FilterBar
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+          selectedStatus={selectedStatus}
+          onStatusChange={setSelectedStatus}
+        />
+      </div>
+
+      {/* Floating Report Form Modal */}
       {pendingPoint && (
         <ReportForm
           lat={pendingPoint.lat}
@@ -75,12 +58,14 @@ export default function App() {
         />
       )}
 
+      {/* Submission Toast Notification */}
       {justSubmitted && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-green-600 text-white shadow-lg rounded-lg px-4 py-2 text-sm z-[1000]">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-green-600 text-white shadow-lg rounded-lg px-4 py-2 text-sm z-[1100] animate-bounce">
           Report submitted — it'll appear on the map shortly.
         </div>
       )}
 
+      {/* Right Floating Stats Panel */}
       <div className="absolute top-4 right-4 z-[1000]">
         <StatsPanel issues={issues} />
       </div>
