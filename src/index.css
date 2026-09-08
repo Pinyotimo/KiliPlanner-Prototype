@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+/* Leaflet needs an explicit height on its container or the map renders as a
+   blank 0px-tall box — this is the #1 "why is my map invisible" bug. */
+.map-container {
+  height: 100vh;
+  width: 100%;
+}
