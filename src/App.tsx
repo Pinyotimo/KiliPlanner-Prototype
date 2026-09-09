@@ -119,6 +119,7 @@ export default function App() {
         <ReportForm
           lat={pendingPoint.lat}
           lng={pendingPoint.lng}
+          existingIssues={issues}
           onClose={handleFormClose}
           onSubmitted={handleSubmitted}
         />

@@ -1,5 +1,7 @@
+import { useState } from "react";
 import type { Issue } from "../types/issue";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "../types/issue";
+import { supabase } from "../lib/supabaseClient";
 import CommentSection from "./CommentSection";
 
 interface IssueFeedProps {
@@ -8,6 +10,39 @@ interface IssueFeedProps {
 }
 
 export default function IssueFeed({ issues, onReportClick }: IssueFeedProps) {
+  const [upvotingIds, setUpvotingIds] = useState<string[]>([]);
+
+  // Local helper to track upvotes per device and sync with Supabase
+  async function handleUpvote(issue: Issue) {
+    if (upvotingIds.includes(issue.id)) return;
+
+    // Get or create persistent device ID to prevent instant duplicate spamming
+    let deviceId = localStorage.getItem("kili_device_id");
+    if (!deviceId) {
+      deviceId = crypto.randomUUID();
+      localStorage.setItem("kili_device_id", deviceId);
+    }
+
+    setUpvotingIds((prev) => [...prev, issue.id]);
+
+    // Record unique vote entry in DB
+    const { error: voteError } = await supabase.from("issue_upvotes").insert({
+      issue_id: issue.id,
+      user_identifier: deviceId,
+    });
+
+    if (!voteError) {
+      // Increment aggregate count on the issue record
+      const currentUpvotes = issue.upvotes || 1;
+      await supabase
+        .from("issues")
+        .update({ upvotes: currentUpvotes + 1 })
+        .eq("id", issue.id);
+    }
+
+    setUpvotingIds((prev) => prev.filter((id) => id !== issue.id));
+  }
+
   return (
     <div className="max-w-2xl mx-auto p-4 pb-20">
       {/* Header Banner */}
@@ -58,32 +93,43 @@ export default function IssueFeed({ issues, onReportClick }: IssueFeedProps) {
               </div>
 
               {/* Description Body */}
-                <p className="text-gray-800 text-sm mb-3 whitespace-pre-wrap">
-                  {issue.description}
-                </p>
+              <p className="text-gray-800 text-sm mb-3 whitespace-pre-wrap">
+                {issue.description}
+              </p>
 
-                {/* Attached Image Display - Strictly checks for a valid base64 data URL string */}
-                {issue.photo_base64 && issue.photo_base64.startsWith("data:image/") && (
-                  <div className="mb-3 overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
-                    <img
-                      src={issue.photo_base64}
-                      alt={CATEGORY_LABELS[issue.category]}
-                      className="w-full h-auto max-h-80 object-cover rounded-lg"
-                      onError={(e) => {
-                        // If image fails to load, hide the element entirely
-                        (e.target as HTMLElement).style.display = "none";
-                      }}
-                    />
-                  </div>
+              {/* Attached Image Display */}
+              {issue.photo_base64 && issue.photo_base64.startsWith("data:image/") && (
+                <div className="mb-3 overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+                  <img
+                    src={issue.photo_base64}
+                    alt={CATEGORY_LABELS[issue.category]}
+                    className="w-full h-auto max-h-80 object-cover rounded-lg"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Sub-detail tag & Upvote Counter Action Row */}
+              <div className="flex items-center justify-between mb-3 gap-2">
+                {issue.sub_detail ? (
+                  <span className="inline-block bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-md font-medium">
+                    {issue.sub_detail}
+                  </span>
+                ) : (
+                  <div />
                 )}
-                {/* Sub-detail tag if available */}
-                {issue.sub_detail && (
-                  <div className="mb-3">
-                    <span className="inline-block bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-md font-medium">
-                      {issue.sub_detail}
-                    </span>
-                  </div>
-                )}
+
+                <button
+                  onClick={() => handleUpvote(issue)}
+                  disabled={upvotingIds.includes(issue.id)}
+                  className="flex items-center gap-1.5 bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-600 border border-gray-200 hover:border-blue-200 px-3 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50"
+                >
+                  <span>👍</span>
+                  <span>{issue.upvotes || 1} Endorsements</span>
+                </button>
+              </div>
 
               {/* Location & Metadata Footer */}
               <div className="flex items-center justify-between pt-3 border-t border-gray-50 text-xs text-gray-500">
