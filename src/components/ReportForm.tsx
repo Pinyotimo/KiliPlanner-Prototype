@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabaseClient";
-import type { IssueCategory } from "../types/issue";
+import type { Issue, IssueCategory } from "../types/issue";
 import { CATEGORY_LABELS } from "../types/issue";
+import { getDistanceInMeters, reverseGeocode } from "../utils/geo";
 
 interface ReportFormProps {
   lat: number;
   lng: number;
+  existingIssues: Issue[]; // Pass existing issues list to check for nearby duplicates
   onClose: () => void;
   onSubmitted: () => void;
 }
@@ -15,6 +17,7 @@ const MAX_DESCRIPTION_LENGTH = 500;
 export default function ReportForm({
   lat,
   lng,
+  existingIssues = [],
   onClose,
   onSubmitted,
 }: ReportFormProps) {
@@ -24,9 +27,72 @@ export default function ReportForm({
   const [reporterName, setReporterName] = useState("");
   const [reporterEmail, setReporterEmail] = useState("");
   const [address, setAddress] = useState("");
+  const [loadingAddress, setLoadingAddress] = useState(false);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [nearbyDuplicate, setNearbyDuplicate] = useState<Issue | null>(null);
+
+  // Auto-fill reverse-geocoded address when coordinates change
+  useEffect(() => {
+    let isMounted = true;
+
+    async function fetchAddress() {
+      setLoadingAddress(true);
+      const detectedAddress = await reverseGeocode(lat, lng);
+      if (isMounted && detectedAddress) {
+        setAddress(detectedAddress);
+      }
+      if (isMounted) {
+        setLoadingAddress(false);
+      }
+    }
+
+    fetchAddress();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [lat, lng]);
+
+  // Check for nearby duplicate reports within 50 meters in the same category
+  useEffect(() => {
+    if (!existingIssues || existingIssues.length === 0) {
+      setNearbyDuplicate(null);
+      return;
+    }
+
+    const duplicate = existingIssues.find((issue) => {
+      if (issue.status !== "open" || issue.category !== category) return false;
+      const distance = getDistanceInMeters(lat, lng, issue.lat, issue.lng);
+      return distance <= 50; // 50-meter threshold
+    });
+
+    setNearbyDuplicate(duplicate || null);
+  }, [category, lat, lng, existingIssues]);
+
+  // Handle upvoting an existing duplicate issue instead of posting new report
+  async function handleUpvoteExisting() {
+    if (!nearbyDuplicate) return;
+    setSubmitting(true);
+    setErrorMsg(null);
+
+    const newUpvoteCount = (nearbyDuplicate.upvotes || 1) + 1;
+
+    const { error } = await supabase
+      .from("issues")
+      .update({ upvotes: newUpvoteCount })
+      .eq("id", nearbyDuplicate.id);
+
+    setSubmitting(false);
+
+    if (error) {
+      console.error("Supabase upvote error:", error);
+      setErrorMsg("Failed to endorse existing issue.");
+    } else {
+      onSubmitted();
+    }
+  }
 
   // Compress photo client-side before setting state
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -95,6 +161,7 @@ export default function ReportForm({
       reporter_email: reporterEmail.trim() || null,
       photo_base64: photoBase64,
       status: "open",
+      upvotes: 1,
     });
 
     setSubmitting(false);
@@ -123,6 +190,26 @@ export default function ReportForm({
         {errorMsg && (
           <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs mb-4">
             {errorMsg}
+          </div>
+        )}
+
+        {/* Nearby Duplicate Warning Banner */}
+        {nearbyDuplicate && (
+          <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-amber-800 mb-4">
+            <p className="font-semibold text-xs mb-1">
+              ⚠️ Similar Issue Reported Nearby
+            </p>
+            <p className="text-[11px] mb-2 leading-relaxed">
+              "{nearbyDuplicate.description}" was reported nearby. You can endorse this existing report instead of creating a duplicate.
+            </p>
+            <button
+              type="button"
+              onClick={handleUpvoteExisting}
+              disabled={submitting}
+              className="w-full bg-amber-600 text-white font-medium py-1.5 rounded-lg text-xs hover:bg-amber-700 disabled:opacity-50 transition-colors shadow-xs"
+            >
+              {submitting ? "Endorsing..." : "👍 Endorse Existing Report (+1 Upvote)"}
+            </button>
           </div>
         )}
 
@@ -175,19 +262,38 @@ export default function ReportForm({
                   alt="Preview"
                   className="w-full h-32 object-cover"
                 />
+                <button
+                  type="button"
+                  onClick={() => setPhotoBase64(null)}
+                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold transition-colors"
+                  title="Remove photo"
+                >
+                  ✕
+                </button>
               </div>
             )}
           </div>
 
           <div>
-            <label className="block font-semibold text-gray-700 mb-1">
-              Location Landmark / Address
-            </label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block font-semibold text-gray-700">
+                Location Landmark / Address
+              </label>
+              {loadingAddress && (
+                <span className="text-[11px] text-blue-600 animate-pulse font-normal">
+                  📍 Detecting location...
+                </span>
+              )}
+            </div>
             <input
               type="text"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="e.g. Near Argwings Kodhek Rd junction"
+              placeholder={
+                loadingAddress
+                  ? "Detecting address..."
+                  : "e.g. Near Argwings Kodhek Rd junction"
+              }
               className="w-full border border-gray-300 rounded-lg p-2.5 text-gray-800"
             />
           </div>
