@@ -2,9 +2,9 @@ import {
   Droplets,
   Waves,
   Trash2,
-  AlertTriangle,
+  Wind,
   Construction,
-  Navigation,
+  ShieldAlert,
   HelpCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -14,9 +14,10 @@ export const CATEGORY_ICONS: Record<IssueCategory, LucideIcon> = {
   water: Droplets,
   sewage: Waves,
   waste: Trash2,
-  pollution: AlertTriangle,
+  pollution: Wind,
   road_damage: Construction,
-  encroachment: Navigation,
+  encroachment: ShieldAlert,
+  other: HelpCircle,
 };
 
 export function getCategoryIcon(category: IssueCategory): LucideIcon {

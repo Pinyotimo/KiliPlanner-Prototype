@@ -45,3 +45,11 @@ export const CATEGORY_COLORS: Record<IssueCategory, string> = {
   encroachment: "#7e22ce",
   other: "#111827",
 };
+
+export interface Comment {
+  id: string;
+  issue_id: string;
+  author_name?: string | null;
+  content: string;
+  created_at: string;
+}
