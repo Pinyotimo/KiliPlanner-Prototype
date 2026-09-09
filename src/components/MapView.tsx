@@ -5,40 +5,45 @@ import {
   GeoJSON,
   Marker,
   Popup,
-  CircleMarker,
   useMapEvents,
+  useMap,
 } from "react-leaflet";
-import type { LeafletMouseEvent, Marker as LeafletMarker } from "leaflet";
+import type { LeafletMouseEvent, Marker as LeafletMarker, LatLngBoundsExpression } from "leaflet";
+import { Locate, Loader2 } from "lucide-react";
 import {
   kilimaniBoundary,
   KILIMANI_CENTER,
   KILIMANI_DEFAULT_ZOOM,
 } from "../data/kilimaniBoundary";
 import { isInsideKilimani } from "../lib/boundaryCheck";
+import { createCategoryDivIcon } from "../lib/leafletIcon";
+import { CategoryIcon } from "./CategoryIcon";
 import type { Issue } from "../types/issue";
-import { CATEGORY_COLORS, CATEGORY_LABELS } from "../types/issue";
+import { CATEGORY_LABELS } from "../types/issue";
+import { relativeTime } from "../lib/relativeTime";
+import { Badge } from "./ui/badge";
+import "leaflet/dist/leaflet.css";
 
 interface MapViewProps {
   issues: Issue[];
-  /** Called with (lat, lng) only when the click lands inside the boundary. */
   onValidClick: (lat: number, lng: number) => void;
+  onIssueSelect?: (issue: Issue) => void;
+  selectedIssueId?: string;
 }
 
 type LatLngPair = [number, number];
 
-/**
- * Invisible helper component — react-leaflet's useMapEvents hook only works
- * inside a component rendered as a child of MapContainer, so the click
- * handling logic lives here rather than in MapView itself.
- */
+const KILIMANI_BOUNDS: LatLngBoundsExpression = [
+  [-1.3050, 36.7700],
+  [-1.2750, 36.8100],
+];
+
 function ClickHandler({
   onValidClick,
 }: {
   onValidClick: (lat: number, lng: number) => void;
 }) {
-  const [rejectedPoint, setRejectedPoint] = useState<LatLngPair | null>(
-    null
-  );
+  const [rejectedPoint, setRejectedPoint] = useState<LatLngPair | null>(null);
   const markerRef = useRef<LeafletMarker | null>(null);
 
   useMapEvents({
@@ -64,17 +69,111 @@ function ClickHandler({
 
   return (
     <Marker position={rejectedPoint} ref={markerRef}>
-      <Popup>Please pick a location inside Kilimani Ward.</Popup>
+      <Popup className="custom-popup">
+        <div className="p-1 text-xs text-foreground font-medium">
+          Please pick a location inside Kilimani Ward.
+        </div>
+      </Popup>
     </Marker>
   );
 }
 
-export default function MapView({ issues, onValidClick }: MapViewProps) {
+function LocationButton() {
+  const map = useMap();
+  const [locating, setLocating] = useState(false);
+
+  function handleLocate() {
+    setLocating(true);
+    map.locate({ setView: true, maxZoom: 16 });
+  }
+
+  useEffect(() => {
+    function onLocationFound(e: any) {
+      setLocating(false);
+      if (!isInsideKilimani(e.latlng.lat, e.latlng.lng)) {
+        alert("Your current location is outside Kilimani Ward.");
+      }
+    }
+
+    function onLocationError(e: any) {
+      setLocating(false);
+      alert("Unable to retrieve your location: " + e.message);
+    }
+
+    map.on("locationfound", onLocationFound);
+    map.on("locationerror", onLocationError);
+
+    return () => {
+      map.off("locationfound", onLocationFound);
+      map.off("locationerror", onLocationError);
+    };
+  }, [map]);
+
+  return (
+    <div className="leaflet-top leaflet-left !top-20">
+      <div className="leaflet-control leaflet-bar border-0 overflow-hidden rounded-md shadow-xs">
+        <button
+          type="button"
+          onClick={handleLocate}
+          disabled={locating}
+          title="Find my location"
+          className="bg-card hover:bg-accent text-card-foreground p-2 text-xs flex items-center justify-center w-8 h-8 cursor-pointer disabled:opacity-50 transition-colors border border-border rounded-md"
+        >
+          {locating ? (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          ) : (
+            <Locate className="h-4 w-4 text-foreground" />
+          )}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FocusIssue({ issue }: { issue?: Issue }) {
+  const map = useMap();
+  useEffect(() => {
+    if (issue) {
+      map.setView([issue.lat, issue.lng], Math.max(map.getZoom(), 16), { animate: true });
+    }
+  }, [issue, map]);
+  return null;
+}
+
+function MapSizeObserver() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize({ animate: false });
+    });
+    resizeObserver.observe(container);
+    const frame = window.requestAnimationFrame(() => map.invalidateSize({ animate: false }));
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
+    };
+  }, [map]);
+
+  return null;
+}
+
+export default function MapView({
+  issues,
+  onValidClick,
+  onIssueSelect,
+  selectedIssueId,
+}: MapViewProps) {
   return (
     <MapContainer
       center={KILIMANI_CENTER}
       zoom={KILIMANI_DEFAULT_ZOOM}
-      className="map-container"
+      minZoom={14}
+      maxBounds={KILIMANI_BOUNDS}
+      maxBoundsViscosity={1.0}
+      className="map-container h-full w-full z-0 bg-background"
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -84,42 +183,81 @@ export default function MapView({ issues, onValidClick }: MapViewProps) {
       <GeoJSON
         data={kilimaniBoundary}
         style={{
-          color: "#111827",
+          color: "var(--primary)",
           weight: 2,
-          fillColor: "#3b82f6",
-          fillOpacity: 0.05,
+          fillColor: "var(--primary)",
+          fillOpacity: 0.1,
         }}
       />
 
       {issues.map((issue) => (
-        <CircleMarker
+        <Marker
           key={issue.id}
-          center={[issue.lat, issue.lng]}
-          radius={8}
-          pathOptions={{
-            color: CATEGORY_COLORS[issue.category],
-            fillColor: CATEGORY_COLORS[issue.category],
-            fillOpacity: 0.85,
+          position={[issue.lat, issue.lng]}
+          icon={createCategoryDivIcon(issue.category)}
+          eventHandlers={{
+            click: () => onIssueSelect?.(issue),
           }}
         >
-          <Popup>
-            <div className="text-sm">
-              <p className="font-semibold">
-                {CATEGORY_LABELS[issue.category]}
+          <Popup className="custom-popup">
+            <div className="p-1 space-y-2 max-w-xs text-xs text-card-foreground">
+              <div className="flex items-center justify-between gap-2">
+                <Badge
+                  variant="outline"
+                  className="flex items-center gap-1 text-[10px] uppercase font-bold border-border bg-muted/50 text-foreground"
+                >
+                  <CategoryIcon category={issue.category} className="h-3 w-3 text-primary" />
+                  {CATEGORY_LABELS[issue.category] || issue.category}
+                </Badge>
+                <Badge
+                  variant={issue.status === "resolved" ? "default" : "secondary"}
+                  className="capitalize text-[10px]"
+                >
+                  {issue.status}
+                </Badge>
+              </div>
+
+              <p className="font-medium text-foreground text-xs leading-snug">
+                {issue.description}
               </p>
-              <p>{issue.description}</p>
-              {issue.address && (
-                <p className="text-gray-500">{issue.address}</p>
+
+              {issue.photo_base64 && (
+                <img
+                  src={issue.photo_base64}
+                  alt="Report attachment"
+                  className="w-full h-28 object-cover rounded-md border border-border bg-muted"
+                />
               )}
-              <p className="text-gray-400 text-xs">
-                {new Date(issue.created_at).toLocaleString()}
-              </p>
+
+              {issue.address && (
+                <p className="text-muted-foreground text-[11px] flex items-center gap-1">
+                  <span>📍</span> {issue.address}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between pt-1">
+                <p className="text-muted-foreground text-[10px]">
+                  {relativeTime(issue.created_at)}
+                </p>
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                  onClick={() => {
+                    window.location.href = `/planner/issues/${issue.id}`;
+                  }}
+                >
+                  View Details
+                </button>
+              </div>
             </div>
           </Popup>
-        </CircleMarker>
+        </Marker>
       ))}
 
       <ClickHandler onValidClick={onValidClick} />
+      <FocusIssue issue={issues.find((issue) => issue.id === selectedIssueId)} />
+      <MapSizeObserver />
+      <LocationButton />
     </MapContainer>
   );
 }

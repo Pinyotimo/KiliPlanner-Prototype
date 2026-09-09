@@ -1,16 +1,23 @@
-export function relativeTime(isoTimestamp: string): string {
-  const then = new Date(isoTimestamp).getTime();
+export function relativeTime(timestamp: string | Date): string {
   const now = Date.now();
-  const diffSeconds = Math.max(0, Math.floor((now - then) / 1000));
+  const past = new Date(timestamp).getTime();
+  const diffInSeconds = Math.floor((now - past) / 1000);
 
-  if (diffSeconds < 60) return "just now";
+  if (isNaN(past)) return "";
+  if (diffInSeconds < 60) return "just now";
 
-  const diffMinutes = Math.floor(diffSeconds / 60);
-  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
 
-  const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours}h ago`;
 
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 30) return `${diffInDays}d ago`;
+
+  const diffInMonths = Math.floor(diffInDays / 30);
+  if (diffInMonths < 12) return `${diffInMonths}mo ago`;
+
+  const diffInYears = Math.floor(diffInDays / 365);
+  return `${diffInYears}y ago`;
 }
