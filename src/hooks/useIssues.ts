@@ -1,68 +1,66 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient";
-import type { Issue, IssueCategory, IssueStatus } from "../types/issue";
+import { Issue, IssueCategory, IssueStatus } from "../types/issue";
 
 export function useIssues() {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<IssueCategory | "all">("all");
-  const [selectedStatus, setSelectedStatus] = useState<IssueStatus | "all">("open");
+  const [selectedStatus, setSelectedStatus] = useState<IssueStatus | "all">("all");
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchIssues = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    const { data, error: supabaseError } = await supabase
+      .from("issues")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (supabaseError) {
+      console.error("Error fetching issues:", supabaseError);
+      setError(supabaseError.message);
+    } else {
+      setIssues(data as Issue[]);
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    let isMounted = true;
+    fetchIssues();
 
-    async function loadIssues() {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("issues")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Failed to load issues:", error.message);
-      } else if (isMounted && data) {
-        setIssues(data as Issue[]);
-      }
-      if (isMounted) setLoading(false);
-    }
-
-    loadIssues();
-
+    // Subscribe to live database updates
     const channel = supabase
-      .channel("issues-changes")
+      .channel("realtime-issues")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "issues" },
-        (payload) => {
-          setIssues((current) => [payload.new as Issue, ...current]);
+        { event: "*", schema: "public", table: "issues" },
+        () => {
+          fetchIssues();
         }
       )
       .subscribe();
 
     return () => {
-      isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [fetchIssues]);
 
-  // Compute filtered issues list based on current selection
-  const filteredIssues = useMemo(() => {
-    return issues.filter((issue) => {
-      const matchesCategory =
-        selectedCategory === "all" || issue.category === selectedCategory;
-      const matchesStatus =
-        selectedStatus === "all" || issue.status === selectedStatus;
-      return matchesCategory && matchesStatus;
-    });
-  }, [issues, selectedCategory, selectedStatus]);
+  const filteredIssues = issues.filter((issue) => {
+    const matchesCategory = selectedCategory === "all" || issue.category === selectedCategory;
+    const matchesStatus = selectedStatus === "all" || issue.status === selectedStatus;
+    return matchesCategory && matchesStatus;
+  });
 
   return {
     issues: filteredIssues,
-    allIssues: issues,
     loading,
+    error,
     selectedCategory,
     setSelectedCategory,
     selectedStatus,
     setSelectedStatus,
+    refetch: fetchIssues,
   };
 }

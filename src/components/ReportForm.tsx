@@ -1,7 +1,53 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Camera, MapPin, User, Mail, AlertTriangle, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
+import { reverseGeocode } from "../lib/reverseGeocode";
 import type { IssueCategory } from "../types/issue";
-import { CATEGORY_LABELS } from "../types/issue";
+import { CATEGORY_LABELS, CATEGORY_COLORS } from "../types/issue";
+import { CategoryIcon } from "./CategoryIcon";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
+
+const CATEGORIES: [IssueCategory, ...IssueCategory[]] = [
+  "water",
+  "sewage",
+  "waste",
+  "pollution",
+  "road_damage",
+  "encroachment",
+  "other",
+];
+
+const reportSchema = z.object({
+  category: z.enum(CATEGORIES, {
+    required_error: "Please select a category.",
+  }),
+  description: z
+    .string()
+    .min(5, "Description must be at least 5 characters.")
+    .max(500, "Description cannot exceed 500 characters."),
+  address: z.string().max(150, "Address is too long.").optional(),
+  reporterName: z.string().max(100, "Name is too long.").optional(),
+  reporterEmail: z
+    .string()
+    .email("Please enter a valid email address.")
+    .or(z.literal(""))
+    .optional(),
+  photoBase64: z.string().nullable().optional(),
+});
+
+type ReportFormValues = z.infer<typeof reportSchema>;
 
 interface ReportFormProps {
   lat: number;
@@ -10,29 +56,58 @@ interface ReportFormProps {
   onSubmitted: () => void;
 }
 
-const MAX_DESCRIPTION_LENGTH = 500;
-
 export default function ReportForm({
   lat,
   lng,
   onClose,
   onSubmitted,
 }: ReportFormProps) {
-  const [category, setCategory] = useState<IssueCategory>("water");
-  const [description, setDescription] = useState("");
-  const [subDetail, setSubDetail] = useState("");
-  const [reporterName, setReporterName] = useState("");
-  const [reporterEmail, setReporterEmail] = useState("");
-  const [address, setAddress] = useState("");
-  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [geocoding, setGeocoding] = useState(true);
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  // Compress photo client-side before setting state
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<ReportFormValues>({
+    resolver: zodResolver(reportSchema),
+    defaultValues: {
+      category: "water",
+      description: "",
+      address: "",
+      reporterName: "",
+      reporterEmail: "",
+      photoBase64: null,
+    },
+  });
+
+  const selectedCategory = watch("category");
+  const photoBase64 = watch("photoBase64");
+
+  // Auto-fetch reverse geocoded address when form opens
+  useEffect(() => {
+    let isMounted = true;
+    setGeocoding(true);
+
+    reverseGeocode(lat, lng).then((resolvedAddress) => {
+      if (isMounted) {
+        setValue("address", resolvedAddress);
+        setGeocoding(false);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [lat, lng, setValue]);
+
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) {
-      setPhotoBase64(null);
+      setValue("photoBase64", null);
       return;
     }
 
@@ -65,35 +140,27 @@ export default function ReportForm({
         const ctx = canvas.getContext("2d");
         ctx?.drawImage(img, 0, 0, width, height);
 
-        // Compress to JPEG at 70% quality (~50KB-150KB)
         const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
-        setPhotoBase64(compressedBase64);
+        setValue("photoBase64", compressedBase64);
       };
     };
 
     reader.readAsDataURL(file);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!description.trim()) {
-      setErrorMsg("Please provide a description.");
-      return;
-    }
-
+  async function onSubmit(data: ReportFormValues) {
     setSubmitting(true);
-    setErrorMsg(null);
+    setServerError(null);
 
     const { error } = await supabase.from("issues").insert({
-      category,
-      description: description.trim().slice(0, MAX_DESCRIPTION_LENGTH),
+      category: data.category,
+      description: data.description.trim(),
       lat,
       lng,
-      address: address.trim() || null,
-      sub_detail: subDetail.trim() || null,
-      reporter_name: reporterName.trim() || null,
-      reporter_email: reporterEmail.trim() || null,
-      photo_base64: photoBase64,
+      address: data.address?.trim() || null,
+      reporter_name: data.reporterName?.trim() || null,
+      reporter_email: data.reporterEmail?.trim() || null,
+      photo_base64: data.photoBase64 || null,
       status: "open",
     });
 
@@ -101,75 +168,133 @@ export default function ReportForm({
 
     if (error) {
       console.error("Supabase insert error:", error);
-      setErrorMsg(error.message);
+      setServerError(error.message);
     } else {
       onSubmitted();
     }
   }
 
   return (
-    <div className="fixed inset-0 z-[1400] flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold text-gray-800">Report an Issue</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl font-bold"
-          >
-            ✕
-          </button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <AlertTriangle className="h-5 w-5 text-primary" />
+            Report an Issue
+          </DialogTitle>
+        </DialogHeader>
 
-        {errorMsg && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg text-xs mb-4">
-            {errorMsg}
+        {serverError && (
+          <div className="bg-destructive/15 text-destructive p-3 rounded-lg text-xs">
+            {serverError}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-          <div>
-            <label className="block font-semibold text-gray-700 mb-1">
-              Category
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-xs">
+          {/* Category Selection Grid */}
+          <div className="space-y-2">
+            <label className="font-semibold text-foreground block">
+              Select Category *
             </label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as IssueCategory)}
-              className="w-full border border-gray-300 rounded-lg p-2.5 bg-white text-gray-800"
-            >
-              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {CATEGORIES.map((cat) => {
+                const isSelected = selectedCategory === cat;
+                const color = CATEGORY_COLORS[cat];
+
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() =>
+                      setValue("category", cat, { validate: true })
+                    }
+                    className={cn(
+                      "flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all cursor-pointer",
+                      isSelected
+                        ? "ring-2 border-transparent shadow-xs"
+                        : "border-border hover:bg-muted/50"
+                    )}
+                    style={{
+                      backgroundColor: isSelected ? `${color}18` : undefined,
+                      borderColor: isSelected ? color : undefined,
+                      color: isSelected ? color : undefined,
+                      boxShadow: isSelected
+                        ? `0 0 0 1px ${color}`
+                        : undefined,
+                    }}
+                  >
+                    <CategoryIcon category={cat} className="h-4 w-4 shrink-0" />
+                    <span className="font-medium text-xs truncate">
+                      {CATEGORY_LABELS[cat]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            {errors.category && (
+              <p className="text-destructive text-[11px]">
+                {errors.category.message}
+              </p>
+            )}
           </div>
 
-          <div>
-            <label className="block font-semibold text-gray-700 mb-1">
+          {/* Location Landmark / Address */}
+          <div className="space-y-1.5">
+            <label className="font-semibold text-foreground flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <MapPin className="h-4 w-4 text-primary" />
+                Detected Location
+              </span>
+              {geocoding && (
+                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Finding street name...
+                </span>
+              )}
+            </label>
+            <Input
+              type="text"
+              {...register("address")}
+              placeholder="Detecting nearby street or landmark..."
+            />
+            {errors.address && (
+              <p className="text-destructive text-[11px]">
+                {errors.address.message}
+              </p>
+            )}
+          </div>
+
+          {/* Description Field */}
+          <div className="space-y-1.5">
+            <label className="font-semibold text-foreground">
               Description *
             </label>
-            <textarea
+            <Textarea
               rows={3}
-              maxLength={MAX_DESCRIPTION_LENGTH}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              {...register("description")}
               placeholder="Describe what's happening..."
-              className="w-full border border-gray-300 rounded-lg p-2.5 text-gray-800"
             />
+            {errors.description && (
+              <p className="text-destructive text-[11px]">
+                {errors.description.message}
+              </p>
+            )}
           </div>
 
-          <div>
-            <label className="block font-semibold text-gray-700 mb-1">
+          {/* Attach Photo Field */}
+          <div className="space-y-1.5">
+            <label className="font-semibold text-foreground flex items-center gap-1.5">
+              <Camera className="h-4 w-4 text-muted-foreground" />
               Attach Photo
             </label>
-            <input
+            <Input
               type="file"
               accept="image/*"
               onChange={handlePhotoChange}
-              className="w-full border border-gray-300 rounded-lg p-2 text-gray-600"
+              className="cursor-pointer"
             />
             {photoBase64 && (
-              <div className="mt-2 relative rounded-lg overflow-hidden border border-gray-200 max-h-32">
+              <div className="mt-2 relative rounded-lg overflow-hidden border max-h-32">
                 <img
                   src={photoBase64}
                   alt="Preview"
@@ -179,64 +304,58 @@ export default function ReportForm({
             )}
           </div>
 
-          <div>
-            <label className="block font-semibold text-gray-700 mb-1">
-              Location Landmark / Address
-            </label>
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="e.g. Near Argwings Kodhek Rd junction"
-              className="w-full border border-gray-300 rounded-lg p-2.5 text-gray-800"
-            />
-          </div>
-
+          {/* Reporter Details */}
           <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">
-                Your Name (Optional)
+            <div className="space-y-1.5">
+              <label className="font-semibold text-foreground flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5 text-muted-foreground" />
+                Your Name
               </label>
-              <input
+              <Input
                 type="text"
-                value={reporterName}
-                onChange={(e) => setReporterName(e.target.value)}
+                {...register("reporterName")}
                 placeholder="Jane Doe"
-                className="w-full border border-gray-300 rounded-lg p-2 text-gray-800"
               />
+              {errors.reporterName && (
+                <p className="text-destructive text-[11px]">
+                  {errors.reporterName.message}
+                </p>
+              )}
             </div>
-            <div>
-              <label className="block font-semibold text-gray-700 mb-1">
-                Your Email (Optional)
+            <div className="space-y-1.5">
+              <label className="font-semibold text-foreground flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                Your Email
               </label>
-              <input
+              <Input
                 type="email"
-                value={reporterEmail}
-                onChange={(e) => setReporterEmail(e.target.value)}
+                {...register("reporterEmail")}
                 placeholder="jane@example.com"
-                className="w-full border border-gray-300 rounded-lg p-2 text-gray-800"
               />
+              {errors.reporterEmail && (
+                <p className="text-destructive text-[11px]">
+                  {errors.reporterEmail.message}
+                </p>
+              )}
             </div>
           </div>
 
+          {/* Form Action Buttons */}
           <div className="flex gap-2 pt-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
-              className="w-1/2 py-2.5 border border-gray-300 rounded-lg text-gray-600 font-semibold"
+              className="w-1/2"
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-1/2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold disabled:opacity-50"
-            >
+            </Button>
+            <Button type="submit" disabled={submitting} className="w-1/2">
               {submitting ? "Publishing..." : "Publish Post"}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

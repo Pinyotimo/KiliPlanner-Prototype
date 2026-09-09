@@ -9,7 +9,6 @@ export type IssueCategory =
 
 export type IssueStatus = "open" | "resolved";
 
-/** Mirrors the `issues` table in sql/schema.sql — keep these in sync. */
 export interface Issue {
   id: string;
   category: IssueCategory;
@@ -37,18 +36,11 @@ export const CATEGORY_LABELS: Record<IssueCategory, string> = {
 };
 
 export const CATEGORY_COLORS: Record<IssueCategory, string> = {
-  water: "#2563eb", // blue
-  sewage: "#78350f", // brown
-  waste: "#6b7280", // grey
-  pollution: "#065f46", // dark green
-  road_damage: "#ea580c", // orange
-  encroachment: "#7e22ce", // purple
-  other: "#111827", // near-black
+  water: "#2563eb",
+  sewage: "#78350f",
+  waste: "#6b7280",
+  pollution: "#065f46",
+  road_damage: "#ea580c",
+  encroachment: "#7e22ce",
+  other: "#111827",
 };
-export interface Comment {
-  id: string;
-  issue_id: string;
-  author_name: string;
-  content: string;
-  created_at: string;
-}

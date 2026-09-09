@@ -1,3 +1,6 @@
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -9,9 +12,72 @@ body,
   margin: 0;
 }
 
-/* Leaflet needs an explicit height on its container or the map renders as a
-   blank 0px-tall box — this is the #1 "why is my map invisible" bug. */
 .map-container {
   height: 100vh;
   width: 100%;
+}
+
+@layer base {
+  .theme {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Geist Variable', sans-serif;
+  }
+
+  :root {
+    /* Soft Earthy Sage & Stone Theme (Light Mode) */
+    --background: oklch(0.97 0.012 150);
+    --foreground: oklch(0.22 0.035 150);
+    --card: oklch(0.99 0.008 150);
+    --card-foreground: oklch(0.22 0.035 150);
+    --popover: oklch(0.99 0.008 150);
+    --popover-foreground: oklch(0.22 0.035 150);
+    --primary: oklch(0.38 0.12 150);
+    --primary-foreground: oklch(0.98 0.005 150);
+    --secondary: oklch(0.93 0.02 150);
+    --secondary-foreground: oklch(0.22 0.035 150);
+    --muted: oklch(0.93 0.018 150);
+    --muted-foreground: oklch(0.45 0.04 150);
+    --accent: oklch(0.91 0.025 150);
+    --accent-foreground: oklch(0.22 0.035 150);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.88 0.025 150);
+    --input: oklch(0.88 0.025 150);
+    --ring: oklch(0.52 0.11 150);
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    /* Deep Forest & Slate Theme (Dark Mode) */
+    --background: oklch(0.18 0.025 150);
+    --foreground: oklch(0.96 0.01 150);
+    --card: oklch(0.23 0.03 150);
+    --card-foreground: oklch(0.96 0.01 150);
+    --popover: oklch(0.23 0.03 150);
+    --popover-foreground: oklch(0.96 0.01 150);
+    --primary: oklch(0.68 0.15 150);
+    --primary-foreground: oklch(0.18 0.025 150);
+    --secondary: oklch(0.28 0.035 150);
+    --secondary-foreground: oklch(0.96 0.01 150);
+    --muted: oklch(0.28 0.035 150);
+    --muted-foreground: oklch(0.70 0.04 150);
+    --accent: oklch(0.30 0.04 150);
+    --accent-foreground: oklch(0.96 0.01 150);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(0.30 0.03 150);
+    --input: oklch(0.30 0.03 150);
+    --ring: oklch(0.68 0.15 150);
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
+
+  html {
+    font-family: var(--font-sans);
+  }
 }

@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MessageSquare, Send, User, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import type { Comment } from "../types/issue";
+import { relativeTime } from "../lib/relativeTime";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface CommentSectionProps {
   issueId: string;
@@ -11,14 +16,13 @@ export default function CommentSection({ issueId }: CommentSectionProps) {
   const [newComment, setNewComment] = useState("");
   const [authorName, setAuthorName] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showComments, setShowComments] = useState(false);
 
   useEffect(() => {
-    if (!showComments) return;
-
     let isMounted = true;
 
-    // Fetch existing comments for this specific issue
+    // Fetch comments immediately on mount to keep count accurate
     async function fetchComments() {
       const { data, error } = await supabase
         .from("comments")
@@ -26,14 +30,17 @@ export default function CommentSection({ issueId }: CommentSectionProps) {
         .eq("issue_id", issueId)
         .order("created_at", { ascending: true });
 
-      if (!error && data && isMounted) {
-        setComments(data as Comment[]);
+      if (isMounted) {
+        setLoading(false);
+        if (!error && data) {
+          setComments(data as Comment[]);
+        }
       }
     }
 
     fetchComments();
 
-    // Subscribe to real-time comment updates for this post
+    // Subscribe to real-time comment additions
     const channel = supabase
       .channel(`comments-${issueId}`)
       .on(
@@ -54,7 +61,7 @@ export default function CommentSection({ issueId }: CommentSectionProps) {
       isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [issueId, showComments]);
+  }, [issueId]);
 
   async function handleAddComment(e: React.FormEvent) {
     e.preventDefault();
@@ -78,65 +85,114 @@ export default function CommentSection({ issueId }: CommentSectionProps) {
   }
 
   return (
-    <div className="mt-3 pt-3 border-t border-gray-100">
-      {/* Toggle Button */}
-      <button
+    <div className="mt-3 pt-3 border-t border-border">
+      {/* Toggle Button with Live Count */}
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => setShowComments(!showComments)}
-        className="text-xs text-gray-500 font-medium hover:text-blue-600 flex items-center gap-1 mb-2"
+        className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1.5 p-0 hover:bg-transparent"
       >
-        💬 {showComments ? "Hide Comments" : `Comments (${comments.length})`}
-      </button>
+        <MessageSquare className="h-3.5 w-3.5" />
+        {showComments
+          ? "Hide Comments"
+          : loading
+          ? "Comments (...)"
+          : `Comments (${comments.length})`}
+      </Button>
 
       {/* Expanded Comment Box */}
-      {showComments && (
-        <div className="space-y-3 bg-gray-50 p-3 rounded-lg border border-gray-100 mt-2">
-          {/* Comments List */}
-          {comments.length === 0 ? (
-            <p className="text-[11px] text-gray-400 italic">No comments yet. Be the first to comment!</p>
-          ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-              {comments.map((comment) => (
-                <div key={comment.id} className="bg-white p-2 rounded-md border border-gray-100 text-xs">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-semibold text-gray-800">{comment.author_name}</span>
-                    <span className="text-[10px] text-gray-400">
-                      {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <p className="text-gray-700">{comment.content}</p>
+      <AnimatePresence>
+        {showComments && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-3 bg-muted/40 p-3 rounded-lg border border-border mt-2">
+              {/* Comments List */}
+              {loading ? (
+                <div className="flex items-center justify-center py-4 text-muted-foreground text-xs gap-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <span>Loading comments...</span>
                 </div>
-              ))}
-            </div>
-          )}
+              ) : comments.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground italic">
+                  No comments yet. Be the first to comment!
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {comments.map((comment) => (
+                    <motion.div
+                      key={comment.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.15 }}
+                      className="bg-card p-2 rounded-md border border-border text-xs space-y-1 shadow-xs"
+                    >
+                      <div className="flex justify-between items-center text-muted-foreground">
+                        <span className="font-semibold text-foreground flex items-center gap-1 text-[11px]">
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          {comment.author_name}
+                        </span>
+                        <span className="text-[10px]">
+                          {relativeTime(comment.created_at)}
+                        </span>
+                      </div>
+                      <p className="text-foreground leading-relaxed">
+                        {comment.content}
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
 
-          {/* Add Comment Input */}
-          <form onSubmit={handleAddComment} className="space-y-2 pt-2 border-t border-gray-200">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Your Name (optional)"
-                value={authorName}
-                onChange={(e) => setAuthorName(e.target.value)}
-                className="w-1/3 text-xs p-2 border border-gray-200 rounded-md bg-white"
-              />
-              <input
-                type="text"
-                placeholder="Write a comment..."
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                className="w-2/3 text-xs p-2 border border-gray-200 rounded-md bg-white"
-              />
+              {/* Add Comment Form */}
+              <form
+                onSubmit={handleAddComment}
+                className="space-y-2 pt-2 border-t border-border"
+              >
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Your Name (optional)"
+                    value={authorName}
+                    onChange={(e) => setAuthorName(e.target.value)}
+                    className="w-1/3 h-8 text-xs"
+                  />
+                  <Input
+                    type="text"
+                    placeholder="Write a comment..."
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    className="w-2/3 h-8 text-xs"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={submitting || !newComment.trim()}
+                  className="w-full h-8 text-xs font-medium gap-1.5"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Posting...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-3.5 w-3.5" />
+                      Post Comment
+                    </>
+                  )}
+                </Button>
+              </form>
             </div>
-            <button
-              type="submit"
-              disabled={submitting || !newComment.trim()}
-              className="w-full bg-blue-600 text-white text-xs py-1.5 rounded-md font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              {submitting ? "Posting..." : "Post Comment"}
-            </button>
-          </form>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
