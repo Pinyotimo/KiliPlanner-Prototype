@@ -49,8 +49,13 @@ export const CATEGORY_COLORS: Record<IssueCategory, string> = {
 export interface Comment {
   id: string;
   issue_id: string;
+
+  author_name?: string | null;
+  content: string;
+
   user_id?: string | null;
   content: string;
   author_name: string;
+
   created_at: string;
 }

@@ -13,8 +13,8 @@ import { CATEGORY_COLORS, CATEGORY_LABELS } from "../types/issue";
 import { relativeTime } from "../lib/relativeTime";
 import { CategoryIcon } from "./CategoryIcon";
 import { getCategoryIcon } from "../lib/categoryIcons";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Badge } from "./ui/badge";
 
 const CATEGORY_ORDER: IssueCategory[] = [
   "water",

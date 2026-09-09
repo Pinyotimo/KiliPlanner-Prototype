@@ -2,9 +2,9 @@ import {
   Droplets,
   Waves,
   Trash2,
-  AlertTriangle,
+  Wind,
   Construction,
-  Navigation,
+  ShieldAlert,
   HelpCircle,
   CircleHelp,
   type LucideIcon,
@@ -16,10 +16,15 @@ export const CATEGORY_ICONS: Record<IssueCategory, LucideIcon> = {
   water: Droplets,
   sewage: Waves,
   waste: Trash2,
-  pollution: AlertTriangle,
+  pollution: Wind,
   road_damage: Construction,
+
+  encroachment: ShieldAlert,
+  other: HelpCircle,
+
   encroachment: Navigation,
   other: CircleHelp,
+
 };
 
 export function getCategoryIcon(category: IssueCategory): LucideIcon {
