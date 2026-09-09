@@ -1,4 +1,4 @@
-import { MapPin, User, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { MapPin, User, Clock, CheckCircle2, Clock3 } from "lucide-react";
 import type { Issue } from "../types/issue";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "../types/issue";
 import { relativeTime } from "../lib/relativeTime";
@@ -12,37 +12,37 @@ interface IssueCardProps {
 }
 
 export default function IssueCard({ issue }: IssueCardProps) {
-  const categoryColor = CATEGORY_COLORS[issue.category];
+  const categoryColor = CATEGORY_COLORS[issue.category] || "#64748b";
   const isResolved = issue.status === "resolved";
 
   return (
-    <Card className="overflow-hidden border border-border bg-card text-card-foreground transition-all hover:border-primary/40 hover:shadow-md">
+    <Card className="group overflow-hidden rounded-xl border border-border/70 bg-card text-card-foreground shadow-xs transition-all duration-200 hover:border-border hover:shadow-md">
       {/* Header: Category Badge & Status Indicator */}
       <CardHeader className="p-4 pb-3 flex-row justify-between items-center space-y-0">
         <Badge
           variant="outline"
           style={{
-            backgroundColor: `${categoryColor}15`,
+            backgroundColor: `${categoryColor}12`,
             color: categoryColor,
-            borderColor: `${categoryColor}35`,
+            borderColor: `${categoryColor}30`,
           }}
-          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold tracking-wide uppercase border rounded-md"
+          className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold tracking-wider uppercase rounded-md transition-colors"
         >
           <CategoryIcon category={issue.category} className="h-3.5 w-3.5" />
-          {CATEGORY_LABELS[issue.category]}
+          {CATEGORY_LABELS[issue.category] || issue.category}
         </Badge>
 
         <span
-          className={`inline-flex items-center gap-1 text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${
+          className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border transition-colors ${
             isResolved
-              ? "bg-primary/10 text-primary border-primary/20"
-              : "bg-muted text-muted-foreground border-border"
+              ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400"
+              : "bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400"
           }`}
         >
           {isResolved ? (
-            <CheckCircle2 className="h-3 w-3 shrink-0 text-primary" />
+            <CheckCircle2 className="h-3 w-3 shrink-0" />
           ) : (
-            <AlertCircle className="h-3 w-3 shrink-0 text-muted-foreground" />
+            <Clock3 className="h-3 w-3 shrink-0" />
           )}
           <span className="capitalize">{issue.status}</span>
         </span>
@@ -50,45 +50,45 @@ export default function IssueCard({ issue }: IssueCardProps) {
 
       {/* Main Content: Description & Photo */}
       <CardContent className="px-4 py-1 space-y-3">
-        <div>
-          <p className="text-foreground text-sm leading-snug font-normal">
+        <div className="space-y-2">
+          <p className="text-foreground text-sm leading-relaxed font-normal">
             {issue.description}
           </p>
           {issue.sub_detail && (
-            <p className="text-muted-foreground text-xs mt-1.5 leading-relaxed bg-muted/50 p-2.5 rounded-md border border-border">
+            <div className="text-muted-foreground text-xs leading-relaxed bg-muted/40 pl-3 pr-2.5 py-2 rounded-r-md border-l-2 border-primary/50">
               {issue.sub_detail}
-            </p>
+            </div>
           )}
         </div>
 
         {issue.photo_base64 && (
-          <div className="relative rounded-lg overflow-hidden border border-border bg-muted max-h-72">
+          <div className="relative rounded-lg overflow-hidden border border-border/60 bg-muted max-h-80 group/photo">
             <img
               src={issue.photo_base64}
-              alt="Issue evidence"
-              className="w-full h-full object-cover transition-transform duration-300 hover:scale-[1.01]"
+              alt="Report evidence"
+              className="w-full h-full object-cover transition-transform duration-300 group-hover/photo:scale-[1.02]"
             />
           </div>
         )}
       </CardContent>
 
       {/* Footer: Location, Reporter & Time metadata */}
-      <CardFooter className="px-4 py-3 flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-muted-foreground gap-2 border-t border-border bg-muted/30 mt-3">
-        <span className="flex items-center gap-1.5 font-medium text-foreground/90 truncate max-w-full">
+      <CardFooter className="px-4 py-2.5 flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-muted-foreground gap-2 border-t border-border/50 bg-muted/20 mt-3">
+        <div className="flex items-center gap-1.5 font-medium text-foreground/80 truncate max-w-full">
           <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
           <span className="truncate">
             {issue.address || `${issue.lat.toFixed(4)}, ${issue.lng.toFixed(4)}`}
           </span>
-        </span>
+        </div>
 
-        <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-between sm:justify-end">
+        <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-border/40 pt-2 sm:pt-0">
           {issue.reporter_name && (
-            <span className="flex items-center gap-1">
-              <User className="h-3 w-3" />
+            <span className="flex items-center gap-1 font-medium">
+              <User className="h-3 w-3 text-muted-foreground/80" />
               {issue.reporter_name}
             </span>
           )}
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1 text-muted-foreground/80">
             <Clock className="h-3 w-3" />
             {relativeTime(issue.created_at)}
           </span>
@@ -96,7 +96,7 @@ export default function IssueCard({ issue }: IssueCardProps) {
       </CardFooter>
 
       {/* Integrated Comments */}
-      <div className="px-4 pb-3">
+      <div className="p-4 pt-3 border-t border-border/40 bg-muted/10">
         <CommentSection issueId={issue.id} />
       </div>
     </Card>

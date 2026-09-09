@@ -9,7 +9,7 @@ import {
   useMap,
 } from "react-leaflet";
 import type { LeafletMouseEvent, Marker as LeafletMarker, LatLngBoundsExpression } from "leaflet";
-import { Locate, Loader2 } from "lucide-react";
+import { Locate, Loader2, Info } from "lucide-react";
 import {
   kilimaniBoundary,
   KILIMANI_CENTER,
@@ -167,97 +167,110 @@ export default function MapView({
   selectedIssueId,
 }: MapViewProps) {
   return (
-    <MapContainer
-      center={KILIMANI_CENTER}
-      zoom={KILIMANI_DEFAULT_ZOOM}
-      minZoom={14}
-      maxBounds={KILIMANI_BOUNDS}
-      maxBoundsViscosity={1.0}
-      className="map-container h-full w-full z-0 bg-background"
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+    <div className="flex flex-col gap-3 p-4 rounded-xl border border-border bg-card shadow-sm w-full h-full">
+      {/* Outer Instructions */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-lg border border-border">
+        <Info className="h-4 w-4 text-primary shrink-0" />
+        <span>
+          <strong className="text-foreground">Instructions:</strong> Click inside the highlighted ward boundary on the map to select a location and report an issue, or click any existing marker to view report details.
+        </span>
+      </div>
 
-      <GeoJSON
-        data={kilimaniBoundary}
-        style={{
-          color: "var(--primary)",
-          weight: 2,
-          fillColor: "var(--primary)",
-          fillOpacity: 0.1,
-        }}
-      />
-
-      {issues.map((issue) => (
-        <Marker
-          key={issue.id}
-          position={[issue.lat, issue.lng]}
-          icon={createCategoryDivIcon(issue.category)}
-          eventHandlers={{
-            click: () => onIssueSelect?.(issue),
-          }}
+      {/* Map Border Wrapper */}
+      <div className="relative w-full h-[450px] rounded-lg border border-border overflow-hidden">
+        <MapContainer
+          center={KILIMANI_CENTER}
+          zoom={KILIMANI_DEFAULT_ZOOM}
+          minZoom={14}
+          maxBounds={KILIMANI_BOUNDS}
+          maxBoundsViscosity={1.0}
+          className="map-container h-full w-full z-0 bg-background"
         >
-          <Popup className="custom-popup">
-            <div className="p-1 space-y-2 max-w-xs text-xs text-card-foreground">
-              <div className="flex items-center justify-between gap-2">
-                <Badge
-                  variant="outline"
-                  className="flex items-center gap-1 text-[10px] uppercase font-bold border-border bg-muted/50 text-foreground"
-                >
-                  <CategoryIcon category={issue.category} className="h-3 w-3 text-primary" />
-                  {CATEGORY_LABELS[issue.category] || issue.category}
-                </Badge>
-                <Badge
-                  variant={issue.status === "resolved" ? "default" : "secondary"}
-                  className="capitalize text-[10px]"
-                >
-                  {issue.status}
-                </Badge>
-              </div>
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
 
-              <p className="font-medium text-foreground text-xs leading-snug">
-                {issue.description}
-              </p>
+          <GeoJSON
+            data={kilimaniBoundary}
+            style={{
+              color: "var(--primary)",
+              weight: 2,
+              fillColor: "var(--primary)",
+              fillOpacity: 0.1,
+            }}
+          />
 
-              {issue.photo_base64 && (
-                <img
-                  src={issue.photo_base64}
-                  alt="Report attachment"
-                  className="w-full h-28 object-cover rounded-md border border-border bg-muted"
-                />
-              )}
+          {issues.map((issue) => (
+            <Marker
+              key={issue.id}
+              position={[issue.lat, issue.lng]}
+              icon={createCategoryDivIcon(issue.category)}
+              eventHandlers={{
+                click: () => onIssueSelect?.(issue),
+              }}
+            >
+              <Popup className="custom-popup">
+                <div className="p-1 space-y-2 max-w-xs text-xs text-card-foreground">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge
+                      variant="outline"
+                      className="flex items-center gap-1 text-[10px] uppercase font-bold border-border bg-muted/50 text-foreground"
+                    >
+                      <CategoryIcon category={issue.category} className="h-3 w-3 text-primary" />
+                      {CATEGORY_LABELS[issue.category] || issue.category}
+                    </Badge>
+                    <Badge
+                      variant={issue.status === "resolved" ? "default" : "secondary"}
+                      className="capitalize text-[10px]"
+                    >
+                      {issue.status}
+                    </Badge>
+                  </div>
 
-              {issue.address && (
-                <p className="text-muted-foreground text-[11px] flex items-center gap-1">
-                  <span>📍</span> {issue.address}
-                </p>
-              )}
+                  <p className="font-medium text-foreground text-xs leading-snug">
+                    {issue.description}
+                  </p>
 
-              <div className="flex items-center justify-between pt-1">
-                <p className="text-muted-foreground text-[10px]">
-                  {relativeTime(issue.created_at)}
-                </p>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-primary hover:underline cursor-pointer"
-                  onClick={() => {
-                    window.location.href = `/planner/issues/${issue.id}`;
-                  }}
-                >
-                  View Details
-                </button>
-              </div>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+                  {issue.photo_base64 && (
+                    <img
+                      src={issue.photo_base64}
+                      alt="Report attachment"
+                      className="w-full h-28 object-cover rounded-md border border-border bg-muted"
+                    />
+                  )}
 
-      <ClickHandler onValidClick={onValidClick} />
-      <FocusIssue issue={issues.find((issue) => issue.id === selectedIssueId)} />
-      <MapSizeObserver />
-      <LocationButton />
-    </MapContainer>
+                  {issue.address && (
+                    <p className="text-muted-foreground text-[11px] flex items-center gap-1">
+                      <span>📍</span> {issue.address}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-muted-foreground text-[10px]">
+                      {relativeTime(issue.created_at)}
+                    </p>
+                    <button
+                      type="button"
+                      className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                      onClick={() => {
+                        window.location.href = `/planner/issues/${issue.id}`;
+                      }}
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+
+          <ClickHandler onValidClick={onValidClick} />
+          <FocusIssue issue={issues.find((issue) => issue.id === selectedIssueId)} />
+          <MapSizeObserver />
+          <LocationButton />
+        </MapContainer>
+      </div>
+    </div>
   );
 }
