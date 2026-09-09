@@ -9,7 +9,6 @@ import {
   useMapEvents,
   useMap,
 } from "react-leaflet";
-import MarkerClusterGroup from "react-leaflet-cluster";
 import type { LeafletMouseEvent, Marker as LeafletMarker, LatLngBoundsExpression } from "leaflet";
 import {
   kilimaniBoundary,
@@ -19,10 +18,13 @@ import {
 import { isInsideKilimani } from "../lib/boundaryCheck";
 import type { Issue } from "../types/issue";
 import { CATEGORY_COLORS, CATEGORY_LABELS } from "../types/issue";
+import { navigateToPlanner } from "../admin/lib/plannerAccess";
 
 interface MapViewProps {
   issues: Issue[];
   onValidClick: (lat: number, lng: number) => void;
+  onIssueSelect?: (issue: Issue) => void;
+  selectedIssueId?: string;
 }
 
 type LatLngPair = [number, number];
@@ -117,7 +119,35 @@ function LocationButton() {
   );
 }
 
-export default function MapView({ issues, onValidClick }: MapViewProps) {
+function FocusIssue({ issue }: { issue?: Issue }) {
+  const map = useMap();
+  useEffect(() => {
+    if (issue) map.setView([issue.lat, issue.lng], Math.max(map.getZoom(), 16), { animate: true });
+  }, [issue, map]);
+  return null;
+}
+
+function MapSizeObserver() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize({ animate: false });
+    });
+    resizeObserver.observe(container);
+    const frame = window.requestAnimationFrame(() => map.invalidateSize({ animate: false }));
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
+    };
+  }, [map]);
+
+  return null;
+}
+
+export default function MapView({ issues, onValidClick, onIssueSelect, selectedIssueId }: MapViewProps) {
   return (
     <MapContainer
       center={KILIMANI_CENTER}
@@ -142,7 +172,7 @@ export default function MapView({ issues, onValidClick }: MapViewProps) {
         }}
       />
 
-      <MarkerClusterGroup chunkedLoading>
+      <>
         {issues.map((issue) => (
           <CircleMarker
             key={issue.id}
@@ -153,11 +183,12 @@ export default function MapView({ issues, onValidClick }: MapViewProps) {
               fillColor: CATEGORY_COLORS[issue.category],
               fillOpacity: 0.85,
             }}
+            eventHandlers={{ click: () => onIssueSelect?.(issue) }}
           >
             <Popup>
               <div className="text-sm max-w-xs">
-                <p className="font-semibold">{CATEGORY_LABELS[issue.category]}</p>
-                <p className="mb-2">{issue.description}</p>
+                <p className="font-semibold">{issue.description}</p>
+                <p className="mb-2 text-xs">{CATEGORY_LABELS[issue.category]} · {issue.status}</p>
                 {issue.photo_base64 && (
                   <img
                     src={issue.photo_base64}
@@ -169,13 +200,16 @@ export default function MapView({ issues, onValidClick }: MapViewProps) {
                 <p className="text-gray-400 text-[10px]">
                   {new Date(issue.created_at).toLocaleString()}
                 </p>
+                <button type="button" className="mt-2 text-xs font-semibold text-blue-600" onClick={() => navigateToPlanner(`/planner/issues/${issue.id}`)}>View Details</button>
               </div>  
             </Popup>
           </CircleMarker>
         ))}
-      </MarkerClusterGroup>
+      </>
 
       <ClickHandler onValidClick={onValidClick} />
+      <FocusIssue issue={issues.find((issue) => issue.id === selectedIssueId)} />
+      <MapSizeObserver />
       <LocationButton />
     </MapContainer>
   );

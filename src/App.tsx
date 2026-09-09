@@ -4,11 +4,16 @@ import ReportForm from "./components/ReportForm";
 import FilterBar from "./components/FilterBar";
 import IssueFeed from "./components/IssueFeed";
 import { useIssues } from "./hooks/useIssues";
+import PlannerConsole from "./admin/pages/PlannerConsole";
 
 type ViewMode = "feed" | "map";
 type PendingPoint = { lat: number; lng: number };
 
 export default function App() {
+  if (window.location.pathname.startsWith("/planner")) {
+    return <PlannerConsole />;
+  }
+
   const {
     issues,
     selectedCategory,

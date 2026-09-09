@@ -9,9 +9,15 @@ body,
   margin: 0;
 }
 
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid #60a5fa;
+  outline-offset: 2px;
+}
+
 /* Leaflet needs an explicit height on its container or the map renders as a
    blank 0px-tall box — this is the #1 "why is my map invisible" bug. */
 .map-container {
-  height: 100vh;
+  height: 100%;
+  min-height: 0;
   width: 100%;
 }
