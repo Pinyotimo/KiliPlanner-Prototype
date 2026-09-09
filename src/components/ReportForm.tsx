@@ -5,19 +5,14 @@ import * as z from "zod";
 import { Camera, MapPin, User, Mail, AlertTriangle, Loader2 } from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import { reverseGeocode } from "../lib/reverseGeocode";
-import type { IssueCategory } from "../types/issue";
+import type { Issue, IssueCategory } from "../types/issue";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "../types/issue";
 import { CategoryIcon } from "./CategoryIcon";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { cn } from "../lib/utils";
 
 const CATEGORIES: [IssueCategory, ...IssueCategory[]] = [
   "water",
@@ -31,12 +26,13 @@ const CATEGORIES: [IssueCategory, ...IssueCategory[]] = [
 
 const reportSchema = z.object({
   category: z.enum(CATEGORIES, {
-    required_error: "Please select a category.",
+    message: "Please select a category.",
   }),
   description: z
     .string()
     .min(5, "Description must be at least 5 characters.")
     .max(500, "Description cannot exceed 500 characters."),
+  subDetail: z.string().optional(),
   address: z.string().max(150, "Address is too long.").optional(),
   reporterName: z.string().max(100, "Name is too long.").optional(),
   reporterEmail: z
@@ -52,19 +48,38 @@ type ReportFormValues = z.infer<typeof reportSchema>;
 interface ReportFormProps {
   lat: number;
   lng: number;
+  existingIssues?: Issue[];
   onClose: () => void;
   onSubmitted: () => void;
+}
+
+// Haversine distance calculator to detect nearby duplicate reports
+function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371e3;
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
 }
 
 export default function ReportForm({
   lat,
   lng,
+  existingIssues = [],
   onClose,
   onSubmitted,
 }: ReportFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [geocoding, setGeocoding] = useState(true);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [nearbyDuplicate, setNearbyDuplicate] = useState<Issue | null>(null);
 
   const {
     register,
@@ -77,6 +92,7 @@ export default function ReportForm({
     defaultValues: {
       category: "water",
       description: "",
+      subDetail: "",
       address: "",
       reporterName: "",
       reporterEmail: "",
@@ -94,7 +110,9 @@ export default function ReportForm({
 
     reverseGeocode(lat, lng).then((resolvedAddress) => {
       if (isMounted) {
-        setValue("address", resolvedAddress);
+        if (resolvedAddress) {
+          setValue("address", resolvedAddress);
+        }
         setGeocoding(false);
       }
     });
@@ -104,6 +122,23 @@ export default function ReportForm({
     };
   }, [lat, lng, setValue]);
 
+  // Check for nearby duplicate reports within 50 meters in the same category
+  useEffect(() => {
+    if (!existingIssues || existingIssues.length === 0) {
+      setNearbyDuplicate(null);
+      return;
+    }
+
+    const duplicate = existingIssues.find((issue) => {
+      if (issue.status !== "open" || issue.category !== selectedCategory) return false;
+      const distance = getDistanceInMeters(lat, lng, issue.lat, issue.lng);
+      return distance <= 50;
+    });
+
+    setNearbyDuplicate(duplicate || null);
+  }, [selectedCategory, lat, lng, existingIssues]);
+
+  // Handle image attachment & compression
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) {
@@ -148,6 +183,30 @@ export default function ReportForm({
     reader.readAsDataURL(file);
   }
 
+  // Endorse existing duplicate instead of making a new post
+  async function handleUpvoteExisting() {
+    if (!nearbyDuplicate) return;
+    setSubmitting(true);
+    setServerError(null);
+
+    const newUpvoteCount = (nearbyDuplicate.upvotes || 1) + 1;
+
+    const { error } = await supabase
+      .from("issues")
+      .update({ upvotes: newUpvoteCount })
+      .eq("id", nearbyDuplicate.id);
+
+    setSubmitting(false);
+
+    if (error) {
+      console.error("Supabase upvote error:", error);
+      setServerError("Failed to endorse existing issue.");
+    } else {
+      onSubmitted();
+    }
+  }
+
+  // Create new issue report
   async function onSubmit(data: ReportFormValues) {
     setSubmitting(true);
     setServerError(null);
@@ -155,6 +214,7 @@ export default function ReportForm({
     const { error } = await supabase.from("issues").insert({
       category: data.category,
       description: data.description.trim(),
+      sub_detail: data.subDetail?.trim() || null,
       lat,
       lng,
       address: data.address?.trim() || null,
@@ -162,6 +222,7 @@ export default function ReportForm({
       reporter_email: data.reporterEmail?.trim() || null,
       photo_base64: data.photoBase64 || null,
       status: "open",
+      upvotes: 1,
     });
 
     setSubmitting(false);
@@ -178,7 +239,7 @@ export default function ReportForm({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base">
+          <DialogTitle className="flex items-center gap-2 text-base font-bold">
             <AlertTriangle className="h-5 w-5 text-primary" />
             Report an Issue
           </DialogTitle>
@@ -187,6 +248,26 @@ export default function ReportForm({
         {serverError && (
           <div className="bg-destructive/15 text-destructive p-3 rounded-lg text-xs">
             {serverError}
+          </div>
+        )}
+
+        {/* Nearby Duplicate Warning Banner */}
+        {nearbyDuplicate && (
+          <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-amber-900 dark:text-amber-200">
+            <p className="font-semibold text-xs mb-1">
+              ⚠️ Similar Issue Reported Nearby
+            </p>
+            <p className="text-[11px] mb-2 leading-relaxed opacity-90">
+              "{nearbyDuplicate.description}" was reported nearby. You can endorse this existing report instead of creating a duplicate.
+            </p>
+            <Button
+              type="button"
+              onClick={handleUpvoteExisting}
+              disabled={submitting}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-1.5 h-auto text-xs"
+            >
+              {submitting ? "Endorsing..." : "👍 Endorse Existing Report (+1 Upvote)"}
+            </Button>
           </div>
         )}
 
@@ -206,13 +287,13 @@ export default function ReportForm({
                     key={cat}
                     type="button"
                     onClick={() =>
-                      setValue("category", cat, { validate: true })
+                      setValue("category", cat, { shouldValidate: true })
                     }
                     className={cn(
                       "flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all cursor-pointer",
                       isSelected
                         ? "ring-2 border-transparent shadow-xs"
-                        : "border-border hover:bg-muted/50"
+                        : "border-border hover:bg-muted/50 text-foreground"
                     )}
                     style={{
                       backgroundColor: isSelected ? `${color}18` : undefined,
@@ -255,7 +336,7 @@ export default function ReportForm({
             <Input
               type="text"
               {...register("address")}
-              placeholder="Detecting nearby street or landmark..."
+              placeholder={geocoding ? "Detecting address..." : "e.g. Near Argwings Kodhek Rd junction"}
             />
             {errors.address && (
               <p className="text-destructive text-[11px]">
@@ -266,7 +347,7 @@ export default function ReportForm({
 
           {/* Description Field */}
           <div className="space-y-1.5">
-            <label className="font-semibold text-foreground">
+            <label className="font-semibold text-foreground block">
               Description *
             </label>
             <Textarea
@@ -279,6 +360,18 @@ export default function ReportForm({
                 {errors.description.message}
               </p>
             )}
+          </div>
+
+          {/* Sub-Detail Field */}
+          <div className="space-y-1.5">
+            <label className="font-semibold text-foreground block">
+              Specific Detail / Sub-location (Optional)
+            </label>
+            <Input
+              type="text"
+              {...register("subDetail")}
+              placeholder="e.g. Broken pipe in front of Gate B"
+            />
           </div>
 
           {/* Attach Photo Field */}
@@ -294,12 +387,20 @@ export default function ReportForm({
               className="cursor-pointer"
             />
             {photoBase64 && (
-              <div className="mt-2 relative rounded-lg overflow-hidden border max-h-32">
+              <div className="mt-2 relative rounded-lg overflow-hidden border border-border max-h-32">
                 <img
                   src={photoBase64}
                   alt="Preview"
                   className="w-full h-32 object-cover"
                 />
+                <button
+                  type="button"
+                  onClick={() => setValue("photoBase64", null)}
+                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
+                  title="Remove photo"
+                >
+                  ✕
+                </button>
               </div>
             )}
           </div>

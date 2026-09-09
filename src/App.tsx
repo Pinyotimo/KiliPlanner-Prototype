@@ -8,11 +8,17 @@ import IssueFeed from "./components/IssueFeed";
 import StatsPanel from "./components/StatsPanel";
 import { useIssues } from "./hooks/useIssues";
 import { Info, MapPin } from "lucide-react";
+import PlannerConsole from "./admin/pages/PlannerConsole";
+
 
 type ViewMode = "feed" | "map" | "analytics" | "about";
 type PendingPoint = { lat: number; lng: number };
 
 export default function App() {
+  if (window.location.pathname.startsWith("/planner")) {
+    return <PlannerConsole />;
+  }
+
   const {
     issues,
     loading,
@@ -176,6 +182,7 @@ export default function App() {
         <ReportForm
           lat={pendingPoint.lat}
           lng={pendingPoint.lng}
+          existingIssues={issues}
           onClose={handleFormClose}
           onSubmitted={handleSubmitted}
         />

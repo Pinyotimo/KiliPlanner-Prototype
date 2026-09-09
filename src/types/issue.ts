@@ -23,6 +23,7 @@ export interface Issue {
   reporter_email: string | null;
   photo_base64: string | null;
   created_at: string;
+  upvotes?: number;
 }
 
 export const CATEGORY_LABELS: Record<IssueCategory, string> = {

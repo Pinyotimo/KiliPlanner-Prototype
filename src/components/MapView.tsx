@@ -8,7 +8,6 @@ import {
   useMapEvents,
   useMap,
 } from "react-leaflet";
-import MarkerClusterGroup from "react-leaflet-cluster";
 import type { LeafletMouseEvent, Marker as LeafletMarker, LatLngBoundsExpression } from "leaflet";
 import { Locate, Loader2 } from "lucide-react";
 import {
@@ -22,12 +21,14 @@ import { CategoryIcon } from "./CategoryIcon";
 import type { Issue } from "../types/issue";
 import { CATEGORY_LABELS } from "../types/issue";
 import { relativeTime } from "../lib/relativeTime";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "./ui/badge";
 import "leaflet/dist/leaflet.css";
 
 interface MapViewProps {
   issues: Issue[];
   onValidClick: (lat: number, lng: number) => void;
+  onIssueSelect?: (issue: Issue) => void;
+  selectedIssueId?: string;
 }
 
 type LatLngPair = [number, number];
@@ -129,7 +130,42 @@ function LocationButton() {
   );
 }
 
-export default function MapView({ issues, onValidClick }: MapViewProps) {
+function FocusIssue({ issue }: { issue?: Issue }) {
+  const map = useMap();
+  useEffect(() => {
+    if (issue) {
+      map.setView([issue.lat, issue.lng], Math.max(map.getZoom(), 16), { animate: true });
+    }
+  }, [issue, map]);
+  return null;
+}
+
+function MapSizeObserver() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const resizeObserver = new ResizeObserver(() => {
+      map.invalidateSize({ animate: false });
+    });
+    resizeObserver.observe(container);
+    const frame = window.requestAnimationFrame(() => map.invalidateSize({ animate: false }));
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
+    };
+  }, [map]);
+
+  return null;
+}
+
+export default function MapView({
+  issues,
+  onValidClick,
+  onIssueSelect,
+  selectedIssueId,
+}: MapViewProps) {
   return (
     <MapContainer
       center={KILIMANI_CENTER}
@@ -154,59 +190,73 @@ export default function MapView({ issues, onValidClick }: MapViewProps) {
         }}
       />
 
-      <MarkerClusterGroup chunkedLoading>
-        {issues.map((issue) => (
-          <Marker
-            key={issue.id}
-            position={[issue.lat, issue.lng]}
-            icon={createCategoryDivIcon(issue.category)}
-          >
-            <Popup className="custom-popup">
-              <div className="p-1 space-y-2 max-w-xs text-xs text-card-foreground">
-                <div className="flex items-center justify-between gap-2">
-                  <Badge
-                    variant="outline"
-                    className="flex items-center gap-1 text-[10px] uppercase font-bold border-border bg-muted/50 text-foreground"
-                  >
-                    <CategoryIcon category={issue.category} className="h-3 w-3 text-primary" />
-                    {CATEGORY_LABELS[issue.category]}
-                  </Badge>
-                  <Badge
-                    variant={issue.status === "resolved" ? "default" : "secondary"}
-                    className="capitalize text-[10px]"
-                  >
-                    {issue.status}
-                  </Badge>
-                </div>
+      {issues.map((issue) => (
+        <Marker
+          key={issue.id}
+          position={[issue.lat, issue.lng]}
+          icon={createCategoryDivIcon(issue.category)}
+          eventHandlers={{
+            click: () => onIssueSelect?.(issue),
+          }}
+        >
+          <Popup className="custom-popup">
+            <div className="p-1 space-y-2 max-w-xs text-xs text-card-foreground">
+              <div className="flex items-center justify-between gap-2">
+                <Badge
+                  variant="outline"
+                  className="flex items-center gap-1 text-[10px] uppercase font-bold border-border bg-muted/50 text-foreground"
+                >
+                  <CategoryIcon category={issue.category} className="h-3 w-3 text-primary" />
+                  {CATEGORY_LABELS[issue.category] || issue.category}
+                </Badge>
+                <Badge
+                  variant={issue.status === "resolved" ? "default" : "secondary"}
+                  className="capitalize text-[10px]"
+                >
+                  {issue.status}
+                </Badge>
+              </div>
 
-                <p className="font-medium text-foreground text-xs leading-snug">
-                  {issue.description}
+              <p className="font-medium text-foreground text-xs leading-snug">
+                {issue.description}
+              </p>
+
+              {issue.photo_base64 && (
+                <img
+                  src={issue.photo_base64}
+                  alt="Report attachment"
+                  className="w-full h-28 object-cover rounded-md border border-border bg-muted"
+                />
+              )}
+
+              {issue.address && (
+                <p className="text-muted-foreground text-[11px] flex items-center gap-1">
+                  <span>📍</span> {issue.address}
                 </p>
+              )}
 
-                {issue.photo_base64 && (
-                  <img
-                    src={issue.photo_base64}
-                    alt="Report attachment"
-                    className="w-full h-28 object-cover rounded-md border border-border bg-muted"
-                  />
-                )}
-
-                {issue.address && (
-                  <p className="text-muted-foreground text-[11px] flex items-center gap-1">
-                    <span>📍</span> {issue.address}
-                  </p>
-                )}
-
+              <div className="flex items-center justify-between pt-1">
                 <p className="text-muted-foreground text-[10px]">
                   {relativeTime(issue.created_at)}
                 </p>
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                  onClick={() => {
+                    window.location.href = `/planner/issues/${issue.id}`;
+                  }}
+                >
+                  View Details
+                </button>
               </div>
-            </Popup>
-          </Marker>
-        ))}
-      </MarkerClusterGroup>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
 
       <ClickHandler onValidClick={onValidClick} />
+      <FocusIssue issue={issues.find((issue) => issue.id === selectedIssueId)} />
+      <MapSizeObserver />
       <LocationButton />
     </MapContainer>
   );

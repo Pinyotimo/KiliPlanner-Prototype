@@ -5,26 +5,12 @@
 @tailwind components;
 @tailwind utilities;
 
-html,
-body,
-#root {
-  height: 100%;
-  margin: 0;
-}
-
-.map-container {
-  height: 100vh;
-  width: 100%;
-}
-
 @layer base {
-  .theme {
-    --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
-  }
-
   :root {
     /* Soft Earthy Sage & Stone Theme (Light Mode) */
+    --font-sans: "Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-heading: var(--font-sans);
+
     --background: oklch(0.97 0.012 150);
     --foreground: oklch(0.22 0.035 150);
     --card: oklch(0.99 0.008 150);
@@ -40,10 +26,13 @@ body,
     --accent: oklch(0.91 0.025 150);
     --accent-foreground: oklch(0.22 0.035 150);
     --destructive: oklch(0.577 0.245 27.325);
+    --destructive-foreground: oklch(0.98 0.005 150);
     --border: oklch(0.88 0.025 150);
     --input: oklch(0.88 0.025 150);
     --ring: oklch(0.52 0.11 150);
     --radius: 0.625rem;
+
+    color-scheme: light;
   }
 
   .dark {
@@ -63,21 +52,109 @@ body,
     --accent: oklch(0.30 0.04 150);
     --accent-foreground: oklch(0.96 0.01 150);
     --destructive: oklch(0.704 0.191 22.216);
+    --destructive-foreground: oklch(0.98 0.005 150);
     --border: oklch(0.30 0.03 150);
     --input: oklch(0.30 0.03 150);
     --ring: oklch(0.68 0.15 150);
+
+    color-scheme: dark;
   }
 
   * {
     border-color: var(--border);
   }
 
-  body {
-    background-color: var(--background);
-    color: var(--foreground);
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
   }
 
   html {
     font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+/* Accessible focus rings */
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Leaflet & Map Container Layout Fixes */
+.map-container {
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  position: relative;
+  z-index: 0;
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background-color: var(--background) !important;
+  font-family: var(--font-sans) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background-color: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  border: 1px solid var(--border);
+  border-radius: var(--radius) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
+  padding: 0 !important;
+  overflow: hidden;
+}
+
+.leaflet-popup-tip {
+  background-color: var(--popover) !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: inherit !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  color: var(--muted-foreground) !important;
+  padding: 8px !important;
+  top: 4px !important;
+  right: 4px !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: var(--foreground) !important;
+}
+
+/* Custom Sleek Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted-foreground);
+  opacity: 0.3;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
 }
