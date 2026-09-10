@@ -25,7 +25,7 @@ interface IssueCardProps {
   isEditable?: boolean;
 }
 
-const STATUS_OPTIONS = [
+const STATUS_OPTIONS: { value: Issue["status"]; label: string }[] = [
   { value: "open", label: "Open" },
   { value: "in_progress", label: "In Progress" },
   { value: "resolved", label: "Resolved" },
@@ -34,7 +34,7 @@ const STATUS_OPTIONS = [
 
 export default function IssueCard({ issue, onStatusChange, isEditable = false }: IssueCardProps) {
   const [isUpdating, setIsUpdating] = useState(false);
-  const [currentStatus, setCurrentStatus] = useState(issue.status);
+  const [currentStatus, setCurrentStatus] = useState<Issue["status"]>(issue.status);
 
   const categoryColor = CATEGORY_COLORS[issue.category] || "#64748b";
 
@@ -77,7 +77,7 @@ export default function IssueCard({ issue, onStatusChange, isEditable = false }:
     }
   };
 
-  const handleStatusSelect = async (newStatus: string) => {
+  const handleStatusSelect = async (newStatus: Issue["status"]) => {
     if (newStatus === currentStatus || isUpdating) return;
 
     setIsUpdating(true);
@@ -124,7 +124,7 @@ export default function IssueCard({ issue, onStatusChange, isEditable = false }:
             <select
               value={currentStatus}
               disabled={isUpdating}
-              onChange={(e) => handleStatusSelect(e.target.value)}
+              onChange={(e) => handleStatusSelect(e.target.value as Issue["status"])}
               className={`appearance-none cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold pl-2.5 pr-7 py-1 rounded-full border shadow-2xs transition-all focus:outline-none focus:ring-2 ${
                 statusConfig.color
               } ${isUpdating ? "opacity-60 cursor-not-allowed pl-7" : ""}`}
