@@ -210,7 +210,9 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
                 : "bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700 hover:text-slate-200"
             }`}
           >
-            <CategoryIcon category={cat.category} className="h-3.5 w-3.5" style={{ color: cat.fill }} />
+            <span style={{ color: cat.fill }} className="inline-flex items-center">
+              <CategoryIcon category={cat.category} className="h-3.5 w-3.5" />
+            </span>
             {cat.name} ({cat.count})
           </button>
         ))}
@@ -257,7 +259,9 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
                         return (
                           <div className="rounded-lg border border-slate-800 bg-slate-950/95 backdrop-blur-md p-3 text-xs text-slate-100 shadow-xl space-y-1">
                             <div className="flex items-center gap-2 font-semibold">
-                              <CategoryIcon category={data.category} className="h-4 w-4" style={{ color: data.fill }} />
+                              <span style={{ color: data.fill }} className="inline-flex items-center">
+                                <CategoryIcon category={data.category} className="h-4 w-4" />
+                              </span>
                               <span>{data.name}</span>
                             </div>
                             <p className="text-slate-400">
