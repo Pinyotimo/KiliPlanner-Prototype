@@ -72,7 +72,9 @@ export default function FilterBar({
           <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 z-30">
             <SelectItem value="all">All</SelectItem>
             <SelectItem value="open">Open</SelectItem>
+            <SelectItem value="in_progress">In Progress</SelectItem>
             <SelectItem value="resolved">Resolved</SelectItem>
+            <SelectItem value="closed">Closed</SelectItem>
           </SelectContent>
         </Select>
       </div>

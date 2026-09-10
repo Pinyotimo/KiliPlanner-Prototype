@@ -117,31 +117,7 @@ export default function Sidebar({
           })}
         </nav>
 
-        {/* Community Status Widget */}
-        <div className="p-3.5 m-3 bg-slate-900 rounded-xl border border-slate-800 space-y-2.5 shadow-xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 block">
-            Community Status
-          </span>
-          <div className="flex justify-between items-center text-xs">
-            <span className="flex items-center gap-1.5 text-slate-300 font-medium">
-              <ShieldAlert className="h-3.5 w-3.5 text-amber-400" />
-              Active Issues
-            </span>
-            <span className="font-bold text-slate-100 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 text-[11px]">
-              {openCount}
-            </span>
-          </div>
-          <div className="flex justify-between items-center text-xs">
-            <span className="flex items-center gap-1.5 text-slate-300 font-medium">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-              Resolved
-            </span>
-            <span className="font-bold text-slate-100 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 text-[11px]">
-              {resolvedCount}
-            </span>
-          </div>
-        </div>
-
+        
         {/* Footer */}
         <div className="p-4 border-t border-slate-800 text-[11px] text-slate-400 text-center bg-slate-950">
           Kilimani Civic Platform © 2026

@@ -9,7 +9,7 @@ import StatsPanel from "./components/StatsPanel";
 import { useIssues } from "./hooks/useIssues";
 import { Info, MapPin } from "lucide-react";
 import PlannerConsole from "./admin/pages/PlannerConsole";
-
+import { OfficialDashboard } from "./officials/pages/OfficialDashboard";
 
 type ViewMode = "feed" | "map" | "analytics" | "about";
 type PendingPoint = { lat: number; lng: number };
@@ -19,8 +19,13 @@ export default function App() {
     return <PlannerConsole />;
   }
 
+  if (window.location.pathname.startsWith("/officials")) {
+    return <OfficialDashboard officialId="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" />;
+  }
+
   const {
     issues,
+    allIssues,
     loading,
     error,
     selectedCategory,
@@ -35,8 +40,9 @@ export default function App() {
   const [justSubmitted, setJustSubmitted] = useState(false);
   const [isSelectingLocation, setIsSelectingLocation] = useState(false);
 
-  const openCount = issues.filter((i) => i.status === "open").length;
-  const resolvedCount = issues.filter((i) => i.status === "resolved").length;
+  // Calculate global badge counts against all issues so active filters don't alter stats
+  const openCount = allIssues.filter((i) => i.status === "open").length;
+  const resolvedCount = allIssues.filter((i) => i.status === "resolved").length;
 
   function handleStartReporting() {
     setViewMode("map");
@@ -142,7 +148,7 @@ export default function App() {
               {/* Analytics / Stats View */}
               {viewMode === "analytics" && (
                 <div className="flex-1 flex justify-center p-4">
-                  <StatsPanel issues={issues} />
+                  <StatsPanel issues={allIssues} />
                 </div>
               )}
 
@@ -182,7 +188,7 @@ export default function App() {
         <ReportForm
           lat={pendingPoint.lat}
           lng={pendingPoint.lng}
-          existingIssues={issues}
+          existingIssues={allIssues}
           onClose={handleFormClose}
           onSubmitted={handleSubmitted}
         />
