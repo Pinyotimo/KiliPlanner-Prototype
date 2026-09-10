@@ -86,9 +86,19 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "issues" },
         (payload) => {
-          const updated = payload.new as Issue;
+          const updated = payload.new as Partial<Issue> & { id: string };
           setIssues((current) =>
-            current.map((item) => (item.id === updated.id ? updated : item))
+            current.map((item) => {
+              if (item.id === updated.id) {
+                // Merge new properties without overwriting existing photo data if missing in payload
+                return {
+                  ...item,
+                  ...updated,
+                  photo_base64: updated.photo_base64 ?? item.photo_base64,
+                };
+              }
+              return item;
+            })
           );
           setRealtimeVersion((v) => v + 1);
           setLastUpdatedAt(new Date().toISOString());

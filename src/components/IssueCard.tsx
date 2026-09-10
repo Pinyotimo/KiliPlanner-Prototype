@@ -1,4 +1,4 @@
-import { MapPin, User, Clock, CheckCircle2, Clock3 } from "lucide-react";
+import { MapPin, User, Clock, CheckCircle2, Clock3, AlertCircle, XCircle } from "lucide-react";
 import type { Issue } from "../types/issue";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "../types/issue";
 import { relativeTime } from "../lib/relativeTime";
@@ -13,11 +13,42 @@ interface IssueCardProps {
 
 export default function IssueCard({ issue }: IssueCardProps) {
   const categoryColor = CATEGORY_COLORS[issue.category] || "#64748b";
-  const isResolved = issue.status === "resolved";
+
+  // Dynamic status styling helper for all official statuses
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "resolved":
+        return {
+          color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400",
+          icon: <CheckCircle2 className="h-3 w-3 shrink-0" />,
+          label: "Resolved",
+        };
+      case "in_progress":
+        return {
+          color: "bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400",
+          icon: <AlertCircle className="h-3 w-3 shrink-0 animate-pulse" />,
+          label: "In Progress",
+        };
+      case "closed":
+        return {
+          color: "bg-muted text-muted-foreground border-border",
+          icon: <XCircle className="h-3 w-3 shrink-0" />,
+          label: "Closed",
+        };
+      default:
+        return {
+          color: "bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400",
+          icon: <Clock3 className="h-3 w-3 shrink-0" />,
+          label: "Open",
+        };
+    }
+  };
+
+  const statusConfig = getStatusBadge(issue.status);
 
   return (
     <Card className="group overflow-hidden rounded-xl border border-border/70 bg-card text-card-foreground shadow-xs transition-all duration-200 hover:border-border hover:shadow-md">
-      {/* Header: Category Badge & Status Indicator */}
+      {/* Header: Category Badge & Dynamic Status Indicator */}
       <CardHeader className="p-4 pb-3 flex-row justify-between items-center space-y-0">
         <Badge
           variant="outline"
@@ -33,28 +64,31 @@ export default function IssueCard({ issue }: IssueCardProps) {
         </Badge>
 
         <span
-          className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border transition-colors ${
-            isResolved
-              ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400"
-              : "bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400"
-          }`}
+          className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border transition-colors ${statusConfig.color}`}
         >
-          {isResolved ? (
-            <CheckCircle2 className="h-3 w-3 shrink-0" />
-          ) : (
-            <Clock3 className="h-3 w-3 shrink-0" />
-          )}
-          <span className="capitalize">{issue.status}</span>
+          {statusConfig.icon}
+          <span>{statusConfig.label}</span>
         </span>
       </CardHeader>
 
-      {/* Main Content: Description & Photo */}
+      {/* Main Content: Description, Official Notes & Photo */}
       <CardContent className="px-4 py-1 space-y-3">
         <div className="space-y-2">
           <p className="text-foreground text-sm leading-relaxed font-normal">
             {issue.description}
           </p>
-          {issue.sub_detail && (
+
+          {/* Official Notes Banner (when set by official) */}
+          {issue.official_notes && (
+            <div className="bg-primary/10 border-l-2 border-primary text-foreground text-xs p-2.5 rounded-r-md space-y-1">
+              <p className="font-semibold text-[11px] text-primary">
+                🏛️ Official Department Update:
+              </p>
+              <p className="leading-relaxed">{issue.official_notes}</p>
+            </div>
+          )}
+
+          {issue.sub_detail && !issue.official_notes && (
             <div className="text-muted-foreground text-xs leading-relaxed bg-muted/40 pl-3 pr-2.5 py-2 rounded-r-md border-l-2 border-primary/50">
               {issue.sub_detail}
             </div>

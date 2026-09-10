@@ -7,7 +7,7 @@ export type IssueCategory =
   | "encroachment"
   | "other";
 
-export type IssueStatus = "open" | "resolved";
+export type IssueStatus = "open" | "in_progress" | "resolved" | "closed";
 
 export interface Issue {
   id: string;
@@ -24,6 +24,9 @@ export interface Issue {
   photo_base64: string | null;
   created_at: string;
   upvotes?: number;
+  assigned_to?: string | null;
+  official_notes?: string | null;
+  updated_at?: string | null;
 }
 
 export const CATEGORY_LABELS: Record<IssueCategory, string> = {
@@ -49,13 +52,9 @@ export const CATEGORY_COLORS: Record<IssueCategory, string> = {
 export interface Comment {
   id: string;
   issue_id: string;
-
   author_name?: string | null;
   content: string;
-
   user_id?: string | null;
-  content: string;
-  author_name: string;
-
   created_at: string;
+  is_official?: boolean;
 }
