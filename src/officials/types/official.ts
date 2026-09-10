@@ -1,4 +1,5 @@
 import { Issue } from '@/types/issue';
+import { ReactNode } from 'react';
 
 // Extends your core Issue type with properties specific to official tracking
 export type IssueStatus = 'pending' | 'in_progress' | 'resolved' | 'closed';
@@ -12,6 +13,7 @@ export interface OfficialUser {
 }
 
 export interface OfficialIssue extends Issue {
+  [x: string]: ReactNode;
   assigned_to?: string;
   official_notes?: string;
   department?: string;
