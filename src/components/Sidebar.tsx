@@ -1,8 +1,17 @@
-import { Map, LayoutList, BarChart3, Info, X, ShieldAlert, CheckCircle2 } from "lucide-react";
+import {
+  Map,
+  LayoutList,
+  BarChart3,
+  Info,
+  Settings,
+  X,
+  ShieldAlert,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "./ui/button";
 import { cn } from "@/lib/utils";
 
-export type NavTab = "map" | "feed" | "analytics" | "about";
+export type NavTab = "map" | "feed" | "analytics" | "about" | "settings";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -22,11 +31,21 @@ export default function Sidebar({
   resolvedCount = 0,
 }: SidebarProps) {
   const navItems = [
-    { id: "map" as NavTab, label: "Map View", icon: Map },
-    { id: "feed" as NavTab, label: "Issue Feed", icon: LayoutList },
-    { id: "analytics" as NavTab, label: "Analytics", icon: BarChart3 },
-    { id: "about" as NavTab, label: "About App", icon: Info },
+    { id: "map" as NavTab, label: "Map View", icon: Map, href: "#" },
+    { id: "feed" as NavTab, label: "Issue Feed", icon: LayoutList, href: "#" },
+    { id: "analytics" as NavTab, label: "Analytics", icon: BarChart3, href: "#" },
+    { id: "about" as NavTab, label: "About App", icon: Info, href: "#" },
+    { id: "planner" as NavTab, label: "Admin Console", icon: Settings, href: "/planner" },
   ];
+
+  function handleNavigation(item: (typeof navItems)[number]) {
+    onSelectTab(item.id);
+    onClose();
+
+    if (item.href && item.href !== "#") {
+      window.location.href = item.href;
+    }
+  }
 
   return (
     <>
@@ -53,7 +72,9 @@ export default function Sidebar({
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">
               KILIPLANNER
             </p>
-            <p className="mt-1 text-lg font-semibold text-slate-50">Community Map</p>
+            <p className="mt-1 text-lg font-semibold text-slate-50">
+              Community Map
+            </p>
           </div>
           <Button
             variant="ghost"
@@ -74,10 +95,7 @@ export default function Sidebar({
             return (
               <button
                 key={item.id}
-                onClick={() => {
-                  onSelectTab(item.id);
-                  onClose();
-                }}
+                onClick={() => handleNavigation(item)}
                 className={cn(
                   "flex items-center gap-3 w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
                   isActive
@@ -88,7 +106,9 @@ export default function Sidebar({
                 <Icon
                   className={cn(
                     "h-5 w-5 shrink-0 transition-colors",
-                    isActive ? "text-white" : "text-slate-400 group-hover:text-white"
+                    isActive
+                      ? "text-white"
+                      : "text-slate-400 group-hover:text-white"
                   )}
                 />
                 {item.label}
