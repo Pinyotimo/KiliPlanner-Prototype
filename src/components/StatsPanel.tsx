@@ -43,15 +43,11 @@ const RECENT_FEED_LIMIT = 8;
 
 interface StatsPanelProps {
   issues: Issue[];
+  onNavigateToFeed?: (issueId: string) => void;
 }
 
-export default function StatsPanel({ issues }: StatsPanelProps) {
+export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps) {
   const [selectedCategory, setSelectedCategory] = useState<IssueCategory | "all">("all");
-
-  const handleNavigate = (path: string) => {
-    window.history.pushState({}, "", path);
-    window.dispatchEvent(new Event("popstate"));
-  };
 
   // 24-Hour Activity Calculation
   const last24hCount = useMemo(() => {
@@ -116,6 +112,18 @@ export default function StatsPanel({ issues }: StatsPanelProps) {
       : issues.filter((i) => i.category === selectedCategory);
     return filtered.slice(0, RECENT_FEED_LIMIT);
   }, [issues, selectedCategory]);
+
+  const handleDetailClick = (issueId: string) => {
+    if (onNavigateToFeed) {
+      onNavigateToFeed(issueId);
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("issue", issueId);
+    url.searchParams.set("tab", "feed");
+    window.location.href = url.toString();
+  };
 
   return (
     <div className="w-full flex-1 space-y-6 text-slate-100">
@@ -471,7 +479,7 @@ export default function StatsPanel({ issues }: StatsPanelProps) {
                     </span>
                     <button
                       type="button"
-                      onClick={() => handleNavigate(`/planner/issues/${issue.id}`)}
+                      onClick={() => handleDetailClick(issue.id)}
                       className="inline-flex items-center gap-1 font-semibold text-blue-400 hover:text-blue-300 transition-colors cursor-pointer group"
                     >
                       Details

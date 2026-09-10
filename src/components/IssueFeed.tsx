@@ -1,4 +1,4 @@
-import React, { useState, memo } from "react";
+import React, { useState, memo, useEffect } from "react";
 import {
   ThumbsUp,
   MapPin,
@@ -26,7 +26,7 @@ interface IssueFeedProps {
   onReportClick: () => void;
 }
 
-const IssueCardItem = memo(({ issue }: { issue: Issue }) => {
+const IssueCardItem = memo(({ issue, isTargeted }: { issue: Issue; isTargeted: boolean }) => {
   const [upvoting, setUpvoting] = useState(false);
   const [localUpvotes, setLocalUpvotes] = useState<number | null>(null);
 
@@ -104,7 +104,14 @@ const IssueCardItem = memo(({ issue }: { issue: Issue }) => {
   }
 
   return (
-    <div className="group bg-card rounded-2xl border border-border/80 p-4 sm:p-5 shadow-xs hover:shadow-md transition-all duration-300 text-card-foreground space-y-4">
+    <div
+      id={`issue-${issue.id}`}
+      className={`group bg-card rounded-2xl border p-4 sm:p-5 shadow-xs transition-all duration-500 text-card-foreground space-y-4 ${
+        isTargeted
+          ? "ring-2 ring-primary border-primary shadow-lg scale-[1.01]"
+          : "border-border/80 hover:shadow-md"
+      }`}
+    >
       {/* Post Header: Category & Timestamp on Left | Status Badge on Far Right */}
       <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-3">
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -225,6 +232,26 @@ const IssueCardItem = memo(({ issue }: { issue: Issue }) => {
 IssueCardItem.displayName = "IssueCardItem";
 
 export default function IssueFeed({ issues, onReportClick }: IssueFeedProps) {
+  const [targetIssueId, setTargetIssueId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const issueParam = params.get("issue");
+    if (issueParam) {
+      setTargetIssueId(issueParam);
+      
+      // Allow DOM to settle before scrolling
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`issue-${issueParam}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 150);
+
+      return () => clearTimeout(timer);
+    }
+  }, [issues]);
+
   return (
     <div className="max-w-2xl mx-auto p-4 space-y-5 pb-24">
       {/* Header Banner */}
@@ -274,7 +301,11 @@ export default function IssueFeed({ issues, onReportClick }: IssueFeedProps) {
       ) : (
         <div className="space-y-4">
           {issues.map((issue) => (
-            <IssueCardItem key={issue.id} issue={issue} />
+            <IssueCardItem
+              key={issue.id}
+              issue={issue}
+              isTargeted={String(issue.id) === targetIssueId}
+            />
           ))}
         </div>
       )}
