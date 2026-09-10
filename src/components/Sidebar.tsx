@@ -1,6 +1,6 @@
 import { Map, LayoutList, BarChart3, Info, X, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { Button } from "./ui/button";
-import { cn } from "../lib/utils";
+import { cn } from "@/lib/utils";
 
 export type NavTab = "map" | "feed" | "analytics" | "about";
 
@@ -30,40 +30,43 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Mobile Darkened Backdrop Overlay */}
+      {/* Mobile Backdrop */}
       {isOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-xs md:hidden"
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-slate-950/50 backdrop-blur-xs md:hidden"
           onClick={onClose}
+          aria-label="Close navigation sidebar"
         />
       )}
 
       {/* Sidebar Drawer */}
       <aside
         className={cn(
-          "fixed top-0 bottom-0 left-0 z-50 w-64 border-r border-border flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:z-auto",
-          /* Contrast adjustments for mobile vs desktop */
-          "bg-secondary text-secondary-foreground max-md:shadow-2xl max-md:border-r-2 max-md:border-primary/20 md:bg-card md:text-card-foreground",
+          "fixed top-0 bottom-0 left-0 z-50 w-64 border-r border-slate-800 flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:z-auto bg-slate-950 text-slate-50 shadow-2xl md:shadow-none",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Sidebar Header */}
-        <div className="flex h-14 items-center justify-between px-4 border-b border-border bg-background/50 md:bg-muted/30">
-          <span className="font-semibold text-[11px] uppercase tracking-wider text-muted-foreground">
-            Navigation
-          </span>
+        {/* Header */}
+        <div className="flex min-h-[5rem] items-center justify-between border-b border-slate-800 px-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">
+              KILIPLANNER
+            </p>
+            <p className="mt-1 text-lg font-semibold text-slate-50">Community Map</p>
+          </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={onClose}
-            className="md:hidden h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-background/80"
+            className="md:hidden h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
           >
             <X className="h-4 w-4" />
           </Button>
         </div>
 
         {/* Navigation Links */}
-        <nav className="flex-1 p-3 space-y-1.5">
+        <nav className="flex-1 p-3 space-y-1.5" aria-label="Main navigation">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -76,16 +79,16 @@ export default function Sidebar({
                   onClose();
                 }}
                 className={cn(
-                  "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-xs font-medium transition-all cursor-pointer",
+                  "flex items-center gap-3 w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
                   isActive
-                    ? "bg-primary text-primary-foreground font-bold shadow-xs"
-                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground md:hover:bg-muted"
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-950/30"
+                    : "text-slate-300 hover:bg-slate-800 hover:text-white"
                 )}
               >
                 <Icon
                   className={cn(
-                    "h-4 w-4 transition-colors",
-                    isActive ? "text-primary-foreground stroke-[2.5]" : "text-muted-foreground"
+                    "h-5 w-5 shrink-0 transition-colors",
+                    isActive ? "text-white" : "text-slate-400 group-hover:text-white"
                   )}
                 />
                 {item.label}
@@ -95,32 +98,32 @@ export default function Sidebar({
         </nav>
 
         {/* Community Status Widget */}
-        <div className="p-3.5 m-3 bg-background/80 md:bg-muted/40 rounded-xl border border-border space-y-2.5 shadow-xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+        <div className="p-3.5 m-3 bg-slate-900 rounded-xl border border-slate-800 space-y-2.5 shadow-xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-blue-300 block">
             Community Status
           </span>
           <div className="flex justify-between items-center text-xs">
-            <span className="flex items-center gap-1.5 text-foreground font-medium">
-              <ShieldAlert className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="flex items-center gap-1.5 text-slate-300 font-medium">
+              <ShieldAlert className="h-3.5 w-3.5 text-amber-400" />
               Active Issues
             </span>
-            <span className="font-bold text-foreground bg-secondary md:bg-background px-2 py-0.5 rounded border border-border text-[11px]">
+            <span className="font-bold text-slate-100 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 text-[11px]">
               {openCount}
             </span>
           </div>
           <div className="flex justify-between items-center text-xs">
-            <span className="flex items-center gap-1.5 text-primary font-medium">
-              <CheckCircle2 className="h-3.5 w-3.5" />
+            <span className="flex items-center gap-1.5 text-slate-300 font-medium">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
               Resolved
             </span>
-            <span className="font-bold text-foreground bg-secondary md:bg-background px-2 py-0.5 rounded border border-border text-[11px]">
+            <span className="font-bold text-slate-100 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 text-[11px]">
               {resolvedCount}
             </span>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border text-[11px] text-muted-foreground text-center bg-background/40 md:bg-muted/20">
+        <div className="p-4 border-t border-slate-800 text-[11px] text-slate-400 text-center bg-slate-950">
           Kilimani Civic Platform © 2026
         </div>
       </aside>
