@@ -117,7 +117,9 @@ const IssueCardItem = memo(({ issue }: { issue: Issue }) => {
             }}
             className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-bold tracking-wider uppercase rounded-md shadow-2xs"
           >
-            <CategoryIcon category={issue.category} className="h-3.5 w-3.5" />
+            <span style={{ color: categoryColor }} className="inline-flex items-center">
+              <CategoryIcon category={issue.category} className="h-3.5 w-3.5" />
+            </span>
             {CATEGORY_LABELS[issue.category] || issue.category}
           </Badge>
 

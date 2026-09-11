@@ -30,11 +30,11 @@ const STATUS_OPTIONS = [
   { value: "in_progress", label: "In Progress" },
   { value: "resolved", label: "Resolved" },
   { value: "closed", label: "Closed" },
-];
+] as const;
 
 export default function IssueCard({ issue, onStatusChange, isEditable = false }: IssueCardProps) {
   const [isUpdating, setIsUpdating] = useState(false);
-  const [currentStatus, setCurrentStatus] = useState(issue.status);
+  const [currentStatus, setCurrentStatus] = useState<string>(issue.status);
 
   const categoryColor = CATEGORY_COLORS[issue.category] || "#64748b";
 
