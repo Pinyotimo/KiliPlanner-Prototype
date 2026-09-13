@@ -3,16 +3,16 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Camera, MapPin, User, Mail, AlertTriangle, Loader2 } from "lucide-react";
-import { supabase } from "../lib/supabaseClient";
-import { reverseGeocode } from "../lib/reverseGeocode";
-import type { Issue, IssueCategory } from "../types/issue";
-import { CATEGORY_LABELS, CATEGORY_COLORS } from "../types/issue";
-import { CategoryIcon } from "./CategoryIcon";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
-import { cn } from "../lib/utils";
+import { supabase } from "../../../lib/supabaseClient";
+import { reverseGeocode } from "../../../lib/reverseGeocode";
+import type { Issue, IssueCategory } from "../../../types/issue";
+import { CATEGORY_LABELS, CATEGORY_COLORS } from "../../../types/issue";
+import { CategoryIcon } from "../../../components/CategoryIcon";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Textarea } from "../../../components/ui/textarea";
+import { cn } from "../../../lib/utils";
 
 const CATEGORIES: [IssueCategory, ...IssueCategory[]] = [
   "water",

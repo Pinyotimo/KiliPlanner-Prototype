@@ -1,6 +1,6 @@
 import { useState, ReactNode } from "react";
-import Navbar from "../components/Navbar";
-import Sidebar, { NavTab } from "../components/Sidebar";
+import Navbar from "../features/resident/components/Navbar";
+import Sidebar, { NavTab } from "../features/resident/components/Sidebar";
 
 interface AppLayoutProps {
   children: ReactNode;

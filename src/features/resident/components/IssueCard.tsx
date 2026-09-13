@@ -11,12 +11,12 @@ import {
   ChevronDown,
   Loader2,
 } from "lucide-react";
-import type { Issue } from "../types/issue";
-import { CATEGORY_LABELS, CATEGORY_COLORS } from "../types/issue";
-import { relativeTime } from "../lib/relativeTime";
+import type { Issue } from "../../../types/issue";
+import { CATEGORY_LABELS, CATEGORY_COLORS } from "../../../types/issue";
+import { relativeTime } from "../../../lib/relativeTime";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CategoryIcon } from "./CategoryIcon";
+import { CategoryIcon } from "../../../components/CategoryIcon";
 import CommentSection from "./CommentSection";
 
 interface IssueCardProps {

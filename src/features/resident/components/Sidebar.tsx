@@ -8,7 +8,7 @@ import {
   ShieldAlert,
   CheckCircle2,
 } from "lucide-react";
-import { Button } from "./ui/button";
+import { Button } from "../../../components/ui/button";
 import { cn } from "@/lib/utils";
 
 export type NavTab = "map" | "feed" | "analytics" | "about" | "settings";

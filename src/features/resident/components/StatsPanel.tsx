@@ -21,12 +21,12 @@ import {
   BarChart3,
   Layers,
 } from "lucide-react";
-import type { Issue, IssueCategory } from "../types/issue";
-import { CATEGORY_COLORS, CATEGORY_LABELS } from "../types/issue";
-import { relativeTime } from "../lib/relativeTime";
-import { CategoryIcon } from "./CategoryIcon";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
+import type { Issue, IssueCategory } from "../../../types/issue";
+import { CATEGORY_COLORS, CATEGORY_LABELS } from "../../../types/issue";
+import { relativeTime } from "../../../lib/relativeTime";
+import { CategoryIcon } from "../../../components/CategoryIcon";
+import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import { Badge } from "../../../components/ui/badge";
 
 const CATEGORY_ORDER: IssueCategory[] = [
   "water",

@@ -1,5 +1,5 @@
 import { Menu, Plus, MapPin, Bell } from "lucide-react";
-import { Button } from "./ui/button";
+import { Button } from "../../../components/ui/button";
 
 interface NavbarProps {
   onOpenSidebar: () => void;

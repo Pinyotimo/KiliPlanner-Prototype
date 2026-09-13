@@ -13,17 +13,20 @@ import {
   XCircle,
   Building2,
 } from "lucide-react";
-import type { Issue } from "../types/issue";
-import { CATEGORY_LABELS, CATEGORY_COLORS } from "../types/issue";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
-import { supabase } from "../lib/supabaseClient";
-import { CategoryIcon } from "./CategoryIcon";
+import type { Issue } from "../../../types/issue";
+import { CATEGORY_LABELS, CATEGORY_COLORS } from "../../../types/issue";
+import { Button } from "../../../components/ui/button";
+import { Badge } from "../../../components/ui/badge";
+import { supabase } from "../../../lib/supabaseClient";
+import { CategoryIcon } from "../../../components/CategoryIcon";
 import CommentSection from "./CommentSection";
 
 interface IssueFeedProps {
   issues: Issue[];
   onReportClick: () => void;
+  targetIssueId?: string | null;
+  isFocusedView?: boolean;
+  onShowAllReports?: () => void;
 }
 
 const IssueCardItem = memo(({ issue, isTargeted }: { issue: Issue; isTargeted: boolean }) => {
@@ -233,14 +236,21 @@ const IssueCardItem = memo(({ issue, isTargeted }: { issue: Issue; isTargeted: b
 
 IssueCardItem.displayName = "IssueCardItem";
 
-export default function IssueFeed({ issues, onReportClick }: IssueFeedProps) {
-  const [targetIssueId, setTargetIssueId] = useState<string | null>(null);
+export default function IssueFeed({
+  issues,
+  onReportClick,
+  targetIssueId: controlledTargetIssueId,
+  isFocusedView = false,
+  onShowAllReports,
+}: IssueFeedProps) {
+  const [urlTargetIssueId, setUrlTargetIssueId] = useState<string | null>(null);
+  const targetIssueId = controlledTargetIssueId ?? urlTargetIssueId;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const issueParam = params.get("issue");
     if (issueParam) {
-      setTargetIssueId(issueParam);
+      setUrlTargetIssueId(issueParam);
       
       // Allow DOM to settle before scrolling
       const timer = setTimeout(() => {
@@ -260,20 +270,33 @@ export default function IssueFeed({ issues, onReportClick }: IssueFeedProps) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-card p-5 rounded-2xl shadow-xs border border-border/70 backdrop-blur-sm">
         <div>
           <h1 className="text-xl font-bold tracking-tight text-foreground">
-            Kilimani Community Feed
+            {isFocusedView ? "Selected Report Details" : "Kilimani Community Feed"}
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Real-time infrastructure & ward activity feed
+            {isFocusedView
+              ? "Showing only the report selected from Analytics"
+              : "Real-time infrastructure & ward activity feed"}
           </p>
         </div>
-        <Button
-          onClick={onReportClick}
-          size="sm"
-          className="gap-1.5 text-xs font-bold px-4 rounded-xl shadow-xs bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-95 shrink-0 cursor-pointer"
-        >
-          <Plus className="h-4 w-4 stroke-[2.5]" />
-          <span>Report Issue</span>
-        </Button>
+        {isFocusedView && onShowAllReports ? (
+          <Button
+            onClick={onShowAllReports}
+            variant="outline"
+            size="sm"
+            className="text-xs font-bold px-4 rounded-xl transition-all active:scale-95 shrink-0 cursor-pointer"
+          >
+            Show All Reports
+          </Button>
+        ) : (
+          <Button
+            onClick={onReportClick}
+            size="sm"
+            className="gap-1.5 text-xs font-bold px-4 rounded-xl shadow-xs bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-95 shrink-0 cursor-pointer"
+          >
+            <Plus className="h-4 w-4 stroke-[2.5]" />
+            <span>Report Issue</span>
+          </Button>
+        )}
       </div>
 
       {/* Feed List / Empty State */}

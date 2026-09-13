@@ -1,12 +1,12 @@
 import { useState } from "react";
-import Navbar from "./components/Navbar";
-import Sidebar, { NavTab } from "./components/Sidebar";
 import MapView from "./components/MapView";
-import ReportForm from "./components/ReportForm";
-import FilterBar from "./components/FilterBar";
-import IssueFeed from "./components/IssueFeed";
-import StatsPanel from "./components/StatsPanel";
-import { useIssues } from "./hooks/useIssues";
+import Navbar from "./features/resident/components/Navbar";
+import Sidebar, { NavTab } from "./features/resident/components/Sidebar";
+import ReportForm from "./features/resident/components/ReportForm";
+import FilterBar from "./features/resident/components/FilterBar";
+import IssueFeed from "./features/resident/components/IssueFeed";
+import StatsPanel from "./features/resident/components/StatsPanel";
+import { useIssues } from "./features/resident/hooks/useIssues";
 import { Info, MapPin } from "lucide-react";
 import PlannerConsole from "./admin/pages/PlannerConsole";
 import { OfficialDashboard } from "./officials/pages/OfficialDashboard";
@@ -39,6 +39,7 @@ export default function App() {
   const [pendingPoint, setPendingPoint] = useState<PendingPoint | null>(null);
   const [justSubmitted, setJustSubmitted] = useState(false);
   const [isSelectingLocation, setIsSelectingLocation] = useState(false);
+  const [focusedIssueId, setFocusedIssueId] = useState<string | null>(null);
 
   // Calculate global badge counts against all issues so active filters don't alter stats
   const openCount = allIssues.filter((i) => i.status === "open").length;
@@ -61,17 +62,35 @@ export default function App() {
   function handleSubmitted() {
     setPendingPoint(null);
     setIsSelectingLocation(false);
+    setFocusedIssueId(null);
     setViewMode("feed");
     setJustSubmitted(true);
     setTimeout(() => setJustSubmitted(false), 4000);
   }
 
   function handleTabSelect(tab: NavTab) {
+    setFocusedIssueId(null);
     setViewMode(tab as ViewMode);
     if (tab !== "map") {
       setIsSelectingLocation(false);
     }
   }
+
+  function handleAnalyticsDetailClick(issueId: string) {
+    setFocusedIssueId(issueId);
+    setSelectedCategory("all");
+    setSelectedStatus("all");
+    setViewMode("feed");
+  }
+
+  function handleShowAllReports() {
+    setFocusedIssueId(null);
+  }
+
+  const focusedIssue = focusedIssueId
+    ? allIssues.find((issue) => issue.id === focusedIssueId)
+    : null;
+  const feedIssues = focusedIssueId ? (focusedIssue ? [focusedIssue] : []) : issues;
 
   return (
     <div className="h-screen w-screen bg-background text-foreground flex flex-col overflow-hidden">
@@ -97,7 +116,7 @@ export default function App() {
         {/* Viewport Content Area */}
         <main className="flex-1 flex flex-col min-w-0 overflow-y-auto relative">
           {/* Category & Status Filter Bar */}
-          {(viewMode === "feed" || viewMode === "map") && (
+          {((viewMode === "feed" && !focusedIssueId) || viewMode === "map") && (
             <div className="p-3 bg-card border-b border-border flex justify-center sticky top-0 z-30 shadow-xs">
               <FilterBar
                 selectedCategory={selectedCategory}
@@ -126,8 +145,11 @@ export default function App() {
               {viewMode === "feed" && (
                 <div className="flex-1 py-4">
                   <IssueFeed
-                    issues={issues}
+                    issues={feedIssues}
                     onReportClick={handleStartReporting}
+                    targetIssueId={focusedIssueId}
+                    isFocusedView={Boolean(focusedIssueId)}
+                    onShowAllReports={handleShowAllReports}
                   />
                 </div>
               )}
@@ -148,7 +170,10 @@ export default function App() {
               {/* Analytics / Stats View */}
               {viewMode === "analytics" && (
                 <div className="flex-1 flex justify-center p-4">
-                  <StatsPanel issues={allIssues} />
+                  <StatsPanel
+                    issues={allIssues}
+                    onNavigateToFeed={handleAnalyticsDetailClick}
+                  />
                 </div>
               )}
 

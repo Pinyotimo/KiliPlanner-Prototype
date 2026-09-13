@@ -8,7 +8,7 @@ import AdminIssueDetails from "./AdminIssueDetails";
 import AdminAnalytics from "./AdminAnalytics";
 import AdminReports from "./AdminReports";
 import AdminSettings from "./AdminSettings";
-import { useIssues } from "../../hooks/useIssues";
+import { useIssues } from "../../features/resident/hooks/useIssues";
 import { getPlannerSettings } from "../lib/plannerSettings";
 import PlannerLogin from "./PlannerLogin";
 
