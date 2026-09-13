@@ -16,17 +16,47 @@ type AdminLayoutProps = {
   showBreadcrumb?: boolean;
   notifications?: Issue[];
   onNotificationsRead?: () => void;
+  onNotificationRead?: (issueId: string) => void;
 };
 
-export default function AdminLayout({ children, title, realtimeStatus, showSearch, searchValue, onSearchChange, refreshing, onRefresh, showBreadcrumb, notifications, onNotificationsRead }: AdminLayoutProps) {
+export default function AdminLayout({
+  children,
+  title,
+  realtimeStatus,
+  showSearch,
+  searchValue,
+  onSearchChange,
+  refreshing,
+  onRefresh,
+  showBreadcrumb,
+  notifications,
+  onNotificationsRead,
+  onNotificationRead,
+}: AdminLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <div className="flex min-h-screen flex-col lg:flex-row">
-        <AdminSidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
+        <AdminSidebar
+          mobileOpen={mobileOpen}
+          onMobileClose={() => setMobileOpen(false)}
+        />
         <main className="min-w-0 flex-1 p-4 lg:p-8">
-          <AdminHeader title={title} onMenuClick={() => setMobileOpen(true)} realtimeStatus={realtimeStatus} showSearch={showSearch} searchValue={searchValue} onSearchChange={onSearchChange} refreshing={refreshing} onRefresh={onRefresh} showBreadcrumb={showBreadcrumb} notifications={notifications} onNotificationsRead={onNotificationsRead} />
+          <AdminHeader
+            title={title}
+            onMenuClick={() => setMobileOpen(true)}
+            realtimeStatus={realtimeStatus}
+            showSearch={showSearch}
+            searchValue={searchValue}
+            onSearchChange={onSearchChange}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            showBreadcrumb={showBreadcrumb}
+            notifications={notifications}
+            onNotificationsRead={onNotificationsRead}
+            onNotificationRead={onNotificationRead}
+          />
           {children}
         </main>
       </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import MapView from "./components/MapView";
 import Navbar from "./features/resident/components/Navbar";
 import Sidebar, { NavTab } from "./features/resident/components/Sidebar";
@@ -6,13 +6,19 @@ import ReportForm from "./features/resident/components/ReportForm";
 import FilterBar from "./features/resident/components/FilterBar";
 import IssueFeed from "./features/resident/components/IssueFeed";
 import StatsPanel from "./features/resident/components/StatsPanel";
+import ResidentNotifications from "./features/resident/components/ResidentNotifications";
 import { useIssues } from "./features/resident/hooks/useIssues";
 import { Info, MapPin } from "lucide-react";
 import PlannerConsole from "./admin/pages/PlannerConsole";
 import { OfficialDashboard } from "./officials/pages/OfficialDashboard";
+import {
+  getResidentNotificationIds,
+  setResidentNotificationIds,
+} from "./lib/notificationStorage";
 
-type ViewMode = "feed" | "map" | "analytics" | "about";
+type ViewMode = "feed" | "map" | "analytics" | "notifications" | "about";
 type PendingPoint = { lat: number; lng: number };
+const RESIDENT_NOTIFICATIONS_KEY = "kiliplanner-resident-notifications-enabled";
 
 export default function App() {
   if (window.location.pathname.startsWith("/planner")) {
@@ -20,7 +26,9 @@ export default function App() {
   }
 
   if (window.location.pathname.startsWith("/officials")) {
-    return <OfficialDashboard officialId="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" />;
+    return (
+      <OfficialDashboard officialId="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" />
+    );
   }
 
   const {
@@ -32,6 +40,7 @@ export default function App() {
     setSelectedCategory,
     selectedStatus,
     setSelectedStatus,
+    newIssue,
   } = useIssues();
 
   const [viewMode, setViewMode] = useState<ViewMode>("feed");
@@ -40,12 +49,38 @@ export default function App() {
   const [justSubmitted, setJustSubmitted] = useState(false);
   const [isSelectingLocation, setIsSelectingLocation] = useState(false);
   const [focusedIssueId, setFocusedIssueId] = useState<string | null>(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    () => localStorage.getItem(RESIDENT_NOTIFICATIONS_KEY) === "true",
+  );
+  const [residentNotificationIds, setResidentNotificationIdsState] = useState<
+    string[]
+  >(() => getResidentNotificationIds());
+
+  function updateResidentNotificationIds(
+    update: string[] | ((current: string[]) => string[]),
+  ) {
+    setResidentNotificationIdsState((current) => {
+      const next = typeof update === "function" ? update(current) : update;
+      setResidentNotificationIds(next);
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    if (!newIssue || !notificationsEnabled) return;
+    updateResidentNotificationIds((current) =>
+      current.includes(newIssue.id)
+        ? current
+        : [newIssue.id, ...current].slice(0, 20),
+    );
+  }, [newIssue, notificationsEnabled]);
 
   // Calculate global badge counts against all issues so active filters don't alter stats
   const openCount = allIssues.filter((i) => i.status === "open").length;
   const resolvedCount = allIssues.filter((i) => i.status === "resolved").length;
 
   function handleStartReporting() {
+    setFocusedIssueId(null);
     setViewMode("map");
     setIsSelectingLocation(true);
   }
@@ -87,10 +122,32 @@ export default function App() {
     setFocusedIssueId(null);
   }
 
+  function handleEnableResidentNotifications() {
+    localStorage.setItem(RESIDENT_NOTIFICATIONS_KEY, "true");
+    setNotificationsEnabled(true);
+  }
+
+  function handleDisableResidentNotifications() {
+    localStorage.setItem(RESIDENT_NOTIFICATIONS_KEY, "false");
+    setNotificationsEnabled(false);
+    updateResidentNotificationIds([]);
+  }
+
+  function handleNotificationIssueSelect(issueId: string) {
+    updateResidentNotificationIds((current) =>
+      current.filter((id) => id !== issueId),
+    );
+    handleAnalyticsDetailClick(issueId);
+  }
+
   const focusedIssue = focusedIssueId
     ? allIssues.find((issue) => issue.id === focusedIssueId)
     : null;
-  const feedIssues = focusedIssueId ? (focusedIssue ? [focusedIssue] : []) : issues;
+  const feedIssues = focusedIssueId
+    ? focusedIssue
+      ? [focusedIssue]
+      : []
+    : issues;
 
   return (
     <div className="h-screen w-screen bg-background text-foreground flex flex-col overflow-hidden">
@@ -98,7 +155,8 @@ export default function App() {
       <Navbar
         onOpenSidebar={() => setSidebarOpen(true)}
         onReportClick={handleStartReporting}
-        unreadCount={openCount}
+        onNotificationsClick={() => setViewMode("notifications")}
+        unreadCount={notificationsEnabled ? residentNotificationIds.length : 0}
       />
 
       {/* Main Body Layout with Sidebar */}
@@ -160,7 +218,9 @@ export default function App() {
                   {isSelectingLocation && !pendingPoint && (
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-medium px-4 py-2 rounded-full z-20 shadow-lg border border-primary/20 animate-fade-in flex items-center gap-1.5">
                       <MapPin className="h-4 w-4" />
-                      <span>Tap anywhere on the map to pinpoint your issue</span>
+                      <span>
+                        Tap anywhere on the map to pinpoint your issue
+                      </span>
                     </div>
                   )}
                   <MapView issues={issues} onValidClick={handleValidClick} />
@@ -177,6 +237,19 @@ export default function App() {
                 </div>
               )}
 
+              {/* Notifications View */}
+              {viewMode === "notifications" && (
+                <ResidentNotifications
+                  issues={allIssues}
+                  unreadIssueIds={residentNotificationIds}
+                  notificationsEnabled={notificationsEnabled}
+                  onEnableNotifications={handleEnableResidentNotifications}
+                  onDisableNotifications={handleDisableResidentNotifications}
+                  onIssueSelect={handleNotificationIssueSelect}
+                  onMarkAllRead={() => updateResidentNotificationIds([])}
+                />
+              )}
+
               {/* About View */}
               {viewMode === "about" && (
                 <div className="max-w-2xl mx-auto p-6 space-y-4">
@@ -186,9 +259,10 @@ export default function App() {
                       About Kilimani Ward Civic Platform
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      This platform empowers residents of Kilimani Ward to report,
-                      track, and resolve civic infrastructure issues—including water
-                      disruptions, road damage, sewage spills, and waste management.
+                      This platform empowers residents of Kilimani Ward to
+                      report, track, and resolve civic infrastructure
+                      issues—including water disruptions, road damage, sewage
+                      spills, and waste management.
                     </p>
                     <div className="border-t border-border/60 pt-3 text-xs space-y-1">
                       <p className="font-semibold text-foreground">
@@ -197,7 +271,9 @@ export default function App() {
                       <ol className="list-decimal list-inside text-muted-foreground space-y-1">
                         <li>Click "Report Issue" in the navigation header.</li>
                         <li>Pinpoint the location on the map.</li>
-                        <li>Select a category, attach evidence, and publish.</li>
+                        <li>
+                          Select a category, attach evidence, and publish.
+                        </li>
                       </ol>
                     </div>
                   </div>

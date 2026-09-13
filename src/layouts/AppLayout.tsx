@@ -7,6 +7,7 @@ interface AppLayoutProps {
   activeTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
   onReportClick: () => void;
+  onNotificationsClick?: () => void;
   openCount?: number;
   resolvedCount?: number;
   unreadCount?: number;
@@ -17,6 +18,7 @@ export default function AppLayout({
   activeTab,
   onSelectTab,
   onReportClick,
+  onNotificationsClick = () => onSelectTab("notifications"),
   openCount = 0,
   resolvedCount = 0,
   unreadCount = 0,
@@ -29,6 +31,7 @@ export default function AppLayout({
       <Navbar
         onOpenSidebar={() => setIsSidebarOpen(true)}
         onReportClick={onReportClick}
+        onNotificationsClick={onNotificationsClick}
         unreadCount={unreadCount}
       />
 
