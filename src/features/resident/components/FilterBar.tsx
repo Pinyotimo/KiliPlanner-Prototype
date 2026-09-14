@@ -1,13 +1,13 @@
-import type { IssueCategory, IssueStatus } from "../types/issue";
-import { CATEGORY_LABELS } from "../types/issue";
-import { Button } from "./ui/button";
+import type { IssueCategory, IssueStatus } from "../../../types/issue";
+import { CATEGORY_LABELS } from "../../../types/issue";
+import { Button } from "../../../components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./ui/select";
+} from "../../../components/ui/select";
 
 interface FilterBarProps {
   selectedCategory: IssueCategory | "all";

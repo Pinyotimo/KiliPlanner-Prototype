@@ -1,18 +1,24 @@
-import { useState } from "react";
-import Navbar from "./components/Navbar";
-import Sidebar, { NavTab } from "./components/Sidebar";
+import { useEffect, useState } from "react";
 import MapView from "./components/MapView";
-import ReportForm from "./components/ReportForm";
-import FilterBar from "./components/FilterBar";
-import IssueFeed from "./components/IssueFeed";
-import StatsPanel from "./components/StatsPanel";
-import { useIssues } from "./hooks/useIssues";
+import Navbar from "./features/resident/components/Navbar";
+import Sidebar, { NavTab } from "./features/resident/components/Sidebar";
+import ReportForm from "./features/resident/components/ReportForm";
+import FilterBar from "./features/resident/components/FilterBar";
+import IssueFeed from "./features/resident/components/IssueFeed";
+import StatsPanel from "./features/resident/components/StatsPanel";
+import ResidentNotifications from "./features/resident/components/ResidentNotifications";
+import { useIssues } from "./features/resident/hooks/useIssues";
 import { Info, MapPin } from "lucide-react";
 import PlannerConsole from "./admin/pages/PlannerConsole";
 import { OfficialDashboard } from "./officials/pages/OfficialDashboard";
+import {
+  getResidentNotificationIds,
+  setResidentNotificationIds,
+} from "./lib/notificationStorage";
 
-type ViewMode = "feed" | "map" | "analytics" | "about";
+type ViewMode = "feed" | "map" | "analytics" | "notifications" | "about";
 type PendingPoint = { lat: number; lng: number };
+const RESIDENT_NOTIFICATIONS_KEY = "kiliplanner-resident-notifications-enabled";
 
 export default function App() {
   if (window.location.pathname.startsWith("/planner")) {
@@ -20,7 +26,9 @@ export default function App() {
   }
 
   if (window.location.pathname.startsWith("/officials")) {
-    return <OfficialDashboard officialId="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" />;
+    return (
+      <OfficialDashboard officialId="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" />
+    );
   }
 
   const {
@@ -32,6 +40,7 @@ export default function App() {
     setSelectedCategory,
     selectedStatus,
     setSelectedStatus,
+    newIssue,
   } = useIssues();
 
   const [viewMode, setViewMode] = useState<ViewMode>("feed");
@@ -39,12 +48,39 @@ export default function App() {
   const [pendingPoint, setPendingPoint] = useState<PendingPoint | null>(null);
   const [justSubmitted, setJustSubmitted] = useState(false);
   const [isSelectingLocation, setIsSelectingLocation] = useState(false);
+  const [focusedIssueId, setFocusedIssueId] = useState<string | null>(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    () => localStorage.getItem(RESIDENT_NOTIFICATIONS_KEY) === "true",
+  );
+  const [residentNotificationIds, setResidentNotificationIdsState] = useState<
+    string[]
+  >(() => getResidentNotificationIds());
+
+  function updateResidentNotificationIds(
+    update: string[] | ((current: string[]) => string[]),
+  ) {
+    setResidentNotificationIdsState((current) => {
+      const next = typeof update === "function" ? update(current) : update;
+      setResidentNotificationIds(next);
+      return next;
+    });
+  }
+
+  useEffect(() => {
+    if (!newIssue || !notificationsEnabled) return;
+    updateResidentNotificationIds((current) =>
+      current.includes(newIssue.id)
+        ? current
+        : [newIssue.id, ...current].slice(0, 20),
+    );
+  }, [newIssue, notificationsEnabled]);
 
   // Calculate global badge counts against all issues so active filters don't alter stats
   const openCount = allIssues.filter((i) => i.status === "open").length;
   const resolvedCount = allIssues.filter((i) => i.status === "resolved").length;
 
   function handleStartReporting() {
+    setFocusedIssueId(null);
     setViewMode("map");
     setIsSelectingLocation(true);
   }
@@ -61,17 +97,57 @@ export default function App() {
   function handleSubmitted() {
     setPendingPoint(null);
     setIsSelectingLocation(false);
+    setFocusedIssueId(null);
     setViewMode("feed");
     setJustSubmitted(true);
     setTimeout(() => setJustSubmitted(false), 4000);
   }
 
   function handleTabSelect(tab: NavTab) {
+    setFocusedIssueId(null);
     setViewMode(tab as ViewMode);
     if (tab !== "map") {
       setIsSelectingLocation(false);
     }
   }
+
+  function handleAnalyticsDetailClick(issueId: string) {
+    setFocusedIssueId(issueId);
+    setSelectedCategory("all");
+    setSelectedStatus("all");
+    setViewMode("feed");
+  }
+
+  function handleShowAllReports() {
+    setFocusedIssueId(null);
+  }
+
+  function handleEnableResidentNotifications() {
+    localStorage.setItem(RESIDENT_NOTIFICATIONS_KEY, "true");
+    setNotificationsEnabled(true);
+  }
+
+  function handleDisableResidentNotifications() {
+    localStorage.setItem(RESIDENT_NOTIFICATIONS_KEY, "false");
+    setNotificationsEnabled(false);
+    updateResidentNotificationIds([]);
+  }
+
+  function handleNotificationIssueSelect(issueId: string) {
+    updateResidentNotificationIds((current) =>
+      current.filter((id) => id !== issueId),
+    );
+    handleAnalyticsDetailClick(issueId);
+  }
+
+  const focusedIssue = focusedIssueId
+    ? allIssues.find((issue) => issue.id === focusedIssueId)
+    : null;
+  const feedIssues = focusedIssueId
+    ? focusedIssue
+      ? [focusedIssue]
+      : []
+    : issues;
 
   return (
     <div className="h-screen w-screen bg-background text-foreground flex flex-col overflow-hidden">
@@ -79,7 +155,8 @@ export default function App() {
       <Navbar
         onOpenSidebar={() => setSidebarOpen(true)}
         onReportClick={handleStartReporting}
-        unreadCount={openCount}
+        onNotificationsClick={() => setViewMode("notifications")}
+        unreadCount={notificationsEnabled ? residentNotificationIds.length : 0}
       />
 
       {/* Main Body Layout with Sidebar */}
@@ -97,7 +174,7 @@ export default function App() {
         {/* Viewport Content Area */}
         <main className="flex-1 flex flex-col min-w-0 overflow-y-auto relative">
           {/* Category & Status Filter Bar */}
-          {(viewMode === "feed" || viewMode === "map") && (
+          {((viewMode === "feed" && !focusedIssueId) || viewMode === "map") && (
             <div className="p-3 bg-card border-b border-border flex justify-center sticky top-0 z-30 shadow-xs">
               <FilterBar
                 selectedCategory={selectedCategory}
@@ -126,8 +203,11 @@ export default function App() {
               {viewMode === "feed" && (
                 <div className="flex-1 py-4">
                   <IssueFeed
-                    issues={issues}
+                    issues={feedIssues}
                     onReportClick={handleStartReporting}
+                    targetIssueId={focusedIssueId}
+                    isFocusedView={Boolean(focusedIssueId)}
+                    onShowAllReports={handleShowAllReports}
                   />
                 </div>
               )}
@@ -138,7 +218,9 @@ export default function App() {
                   {isSelectingLocation && !pendingPoint && (
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-medium px-4 py-2 rounded-full z-20 shadow-lg border border-primary/20 animate-fade-in flex items-center gap-1.5">
                       <MapPin className="h-4 w-4" />
-                      <span>Tap anywhere on the map to pinpoint your issue</span>
+                      <span>
+                        Tap anywhere on the map to pinpoint your issue
+                      </span>
                     </div>
                   )}
                   <MapView issues={issues} onValidClick={handleValidClick} />
@@ -148,8 +230,24 @@ export default function App() {
               {/* Analytics / Stats View */}
               {viewMode === "analytics" && (
                 <div className="flex-1 flex justify-center p-4">
-                  <StatsPanel issues={allIssues} />
+                  <StatsPanel
+                    issues={allIssues}
+                    onNavigateToFeed={handleAnalyticsDetailClick}
+                  />
                 </div>
+              )}
+
+              {/* Notifications View */}
+              {viewMode === "notifications" && (
+                <ResidentNotifications
+                  issues={allIssues}
+                  unreadIssueIds={residentNotificationIds}
+                  notificationsEnabled={notificationsEnabled}
+                  onEnableNotifications={handleEnableResidentNotifications}
+                  onDisableNotifications={handleDisableResidentNotifications}
+                  onIssueSelect={handleNotificationIssueSelect}
+                  onMarkAllRead={() => updateResidentNotificationIds([])}
+                />
               )}
 
               {/* About View */}
@@ -161,9 +259,10 @@ export default function App() {
                       About Kilimani Ward Civic Platform
                     </div>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      This platform empowers residents of Kilimani Ward to report,
-                      track, and resolve civic infrastructure issues—including water
-                      disruptions, road damage, sewage spills, and waste management.
+                      This platform empowers residents of Kilimani Ward to
+                      report, track, and resolve civic infrastructure
+                      issues—including water disruptions, road damage, sewage
+                      spills, and waste management.
                     </p>
                     <div className="border-t border-border/60 pt-3 text-xs space-y-1">
                       <p className="font-semibold text-foreground">
@@ -172,7 +271,9 @@ export default function App() {
                       <ol className="list-decimal list-inside text-muted-foreground space-y-1">
                         <li>Click "Report Issue" in the navigation header.</li>
                         <li>Pinpoint the location on the map.</li>
-                        <li>Select a category, attach evidence, and publish.</li>
+                        <li>
+                          Select a category, attach evidence, and publish.
+                        </li>
                       </ol>
                     </div>
                   </div>

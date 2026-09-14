@@ -7,11 +7,12 @@ import {
   X,
   ShieldAlert,
   CheckCircle2,
+  Bell,
 } from "lucide-react";
-import { Button } from "./ui/button";
+import { Button } from "../../../components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type NavTab = "map" | "feed" | "analytics" | "about" | "settings";
+export type NavTab = "map" | "feed" | "analytics" | "notifications" | "about" | "settings";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -34,6 +35,7 @@ export default function Sidebar({
     { id: "map" as NavTab, label: "Map View", icon: Map, href: "#" },
     { id: "feed" as NavTab, label: "Issue Feed", icon: LayoutList, href: "#" },
     { id: "analytics" as NavTab, label: "Analytics", icon: BarChart3, href: "#" },
+    { id: "notifications" as NavTab, label: "Notifications", icon: Bell, href: "#" },
     { id: "about" as NavTab, label: "About App", icon: Info, href: "#" },
     { id: "planner" as NavTab, label: "Admin Console", icon: Settings, href: "/planner" },
   ];

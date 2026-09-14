@@ -1,12 +1,13 @@
 import { useState, ReactNode } from "react";
-import Navbar from "../components/Navbar";
-import Sidebar, { NavTab } from "../components/Sidebar";
+import Navbar from "../features/resident/components/Navbar";
+import Sidebar, { NavTab } from "../features/resident/components/Sidebar";
 
 interface AppLayoutProps {
   children: ReactNode;
   activeTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
   onReportClick: () => void;
+  onNotificationsClick?: () => void;
   openCount?: number;
   resolvedCount?: number;
   unreadCount?: number;
@@ -17,6 +18,7 @@ export default function AppLayout({
   activeTab,
   onSelectTab,
   onReportClick,
+  onNotificationsClick = () => onSelectTab("notifications"),
   openCount = 0,
   resolvedCount = 0,
   unreadCount = 0,
@@ -29,6 +31,7 @@ export default function AppLayout({
       <Navbar
         onOpenSidebar={() => setIsSidebarOpen(true)}
         onReportClick={onReportClick}
+        onNotificationsClick={onNotificationsClick}
         unreadCount={unreadCount}
       />
 

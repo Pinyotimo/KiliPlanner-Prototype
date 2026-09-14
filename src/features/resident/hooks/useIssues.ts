@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "../lib/supabaseClient";
-import type { Issue, IssueCategory, IssueStatus } from "../types/issue";
+import { supabase } from "../../../lib/supabaseClient";
+import type { Issue, IssueCategory, IssueStatus } from "../../../types/issue";
 
 interface UseIssuesOptions {
   realtimeEnabled?: boolean;

@@ -11,6 +11,9 @@ export const IssueStatusCard: React.FC<IssueStatusCardProps> = ({ issue, onUpdat
   const [notes, setNotes] = useState(issue.official_notes || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Check if issue is flagged as security priority
+  const isSecurity = issue.is_security_alert || issue.category === 'security';
+
   // Extract photo source whether stored as base64 string or image URL
   const photoSource = (issue as any).photo_base64 || (issue as any).photo_url;
 
@@ -25,18 +28,38 @@ export const IssueStatusCard: React.FC<IssueStatusCardProps> = ({ issue, onUpdat
   };
 
   return (
-    <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm space-y-4">
+    <div
+      className={`p-5 rounded-lg border shadow-sm space-y-4 transition-all ${
+        isSecurity
+          ? 'bg-red-50/40 border-red-500/80 ring-1 ring-red-500/30'
+          : 'bg-white border-gray-200'
+      }`}
+    >
+      {/* Security Alert Priority Banner */}
+      {isSecurity && (
+        <div className="flex items-center justify-between bg-red-600 text-white px-3 py-1.5 rounded-md text-xs font-bold animate-pulse shadow-xs">
+          <span>🚨 TOP PRIORITY SAFETY ALERT</span>
+          {issue.unsafe_time && (
+            <span className="text-[11px] bg-black/30 px-2 py-0.5 rounded font-medium">
+              Unsafe: {issue.unsafe_time}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="flex justify-between items-start">
         <div>
-          <h3 className="font-semibold text-lg text-gray-900">{issue.summary}</h3>
-          <p className="text-sm text-gray-500">Category: {issue.category || 'General'}</p>
+          <h3 className="font-semibold text-lg text-gray-900">{issue.summary || issue.description}</h3>
+          <p className="text-sm text-gray-500">
+            Category: <span className="font-medium text-gray-800">{issue.category || 'General'}</span>
+          </p>
         </div>
-        <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+        <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 shrink-0">
           {status.replace('_', ' ').toUpperCase()}
         </span>
       </div>
 
-      <p className="text-gray-700 text-sm">{issue.description}</p>
+      <p className="text-gray-700 text-sm leading-relaxed">{issue.description}</p>
 
       {/* Render uploaded evidence photo if available */}
       {photoSource && (
