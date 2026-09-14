@@ -32,9 +32,12 @@ export default function ResidentNotifications({
             </span>
             <div className="min-w-0 space-y-4">
               <div>
-                <h1 className="text-xl font-bold tracking-tight">Enable Notifications?</h1>
+                <h1 className="text-xl font-bold tracking-tight">
+                  Enable Notifications?
+                </h1>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  Get notified in the app when a new Kilimani infrastructure report is submitted.
+                  Get notified in the app when a new Kilimani infrastructure
+                  report is submitted.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -71,12 +74,12 @@ export default function ResidentNotifications({
         onIssueSelect={onIssueSelect}
         onMarkAllRead={onMarkAllRead}
       />
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex justify-stretch sm:justify-end">
         <Button
           type="button"
           variant="ghost"
           onClick={onDisableNotifications}
-          className="gap-1.5 text-xs text-muted-foreground"
+          className="w-full justify-center gap-1.5 text-xs text-muted-foreground sm:w-auto"
         >
           <BellOff className="h-3.5 w-3.5" />
           Disable Notifications
