@@ -2,13 +2,27 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Camera, MapPin, User, Mail, AlertTriangle, Loader2, ShieldAlert, Clock } from "lucide-react";
+import {
+  Camera,
+  MapPin,
+  User,
+  Mail,
+  AlertTriangle,
+  Loader2,
+  ShieldAlert,
+  Clock,
+} from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
 import { reverseGeocode } from "../../../lib/reverseGeocode";
 import type { Issue, IssueCategory } from "../../../types/issue";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "../../../types/issue";
 import { CategoryIcon } from "../../../components/CategoryIcon";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../../components/ui/dialog";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Textarea } from "../../../components/ui/textarea";
@@ -55,7 +69,12 @@ interface ReportFormProps {
   onSubmitted: () => void;
 }
 
-function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+function getDistanceInMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
   const R = 6371e3;
   const φ1 = (lat1 * Math.PI) / 180;
   const φ2 = (lat2 * Math.PI) / 180;
@@ -130,7 +149,8 @@ export default function ReportForm({
     }
 
     const duplicate = existingIssues.find((issue) => {
-      if (issue.status !== "open" || issue.category !== selectedCategory) return false;
+      if (issue.status !== "open" || issue.category !== selectedCategory)
+        return false;
       const distance = getDistanceInMeters(lat, lng, issue.lat, issue.lng);
       return distance <= 50;
     });
@@ -253,20 +273,23 @@ export default function ReportForm({
         )}
 
         {nearbyDuplicate && (
-          <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-amber-900 dark:text-amber-200">
+          <div className="bg-accent/10 border border-accent/20 p-3 rounded-xl text-accent-foreground dark:text-accent-foreground">
             <p className="font-semibold text-xs mb-1">
               ⚠️ Similar Issue Reported Nearby
             </p>
             <p className="text-[11px] mb-2 leading-relaxed opacity-90">
-              "{nearbyDuplicate.description}" was reported nearby. You can endorse this existing report instead of creating a duplicate.
+              "{nearbyDuplicate.description}" was reported nearby. You can
+              endorse this existing report instead of creating a duplicate.
             </p>
             <Button
               type="button"
               onClick={handleUpvoteExisting}
               disabled={submitting}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-1.5 h-auto text-xs"
+              className="w-full bg-accent hover:bg-accent text-primary-foreground font-medium py-1.5 h-auto text-xs"
             >
-              {submitting ? "Endorsing..." : "👍 Endorse Existing Report (+1 Upvote)"}
+              {submitting
+                ? "Endorsing..."
+                : "👍 Endorse Existing Report (+1 Upvote)"}
             </Button>
           </div>
         )}
@@ -285,15 +308,19 @@ export default function ReportForm({
                   <button
                     key={cat}
                     type="button"
-                    onClick={() => setValue("category", cat, { shouldValidate: true })}
+                    onClick={() =>
+                      setValue("category", cat, { shouldValidate: true })
+                    }
                     className={cn(
                       "flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all cursor-pointer",
                       isSelected
                         ? "ring-2 border-transparent shadow-xs"
-                        : "border-border hover:bg-muted/50 text-foreground"
+                        : "border-border hover:bg-muted/50 text-foreground",
                     )}
                     style={{
-                      backgroundColor: isSelected ? `${color}18` : undefined,
+                      backgroundColor: isSelected
+                        ? `color-mix(in oklch, ${color} 14%, transparent)`
+                        : undefined,
                       borderColor: isSelected ? color : undefined,
                       color: isSelected ? color : undefined,
                     }}
@@ -310,13 +337,14 @@ export default function ReportForm({
 
           {/* Conditional Safety Field for Security Reports */}
           {selectedCategory === "security" && (
-            <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-xl space-y-2">
-              <div className="flex items-center gap-1.5 font-bold text-red-600 dark:text-red-400">
+            <div className="bg-destructive/10 border border-destructive/30 p-3 rounded-xl space-y-2">
+              <div className="flex items-center gap-1.5 font-bold text-destructive dark:text-destructive">
                 <ShieldAlert className="h-4 w-4" />
                 <span>Security Priority Alert</span>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                This report will be pinned as high-priority on community feeds and maps to alert residents and local security officers.
+                This report will be pinned as high-priority on community feeds
+                and maps to alert residents and local security officers.
               </p>
               <div className="space-y-1 pt-1">
                 <label className="font-semibold text-foreground flex items-center gap-1">
@@ -325,11 +353,15 @@ export default function ReportForm({
                 </label>
                 <select
                   {...register("unsafeTime")}
-                  className="w-full bg-background border border-border rounded-lg p-2 text-xs text-foreground focus:ring-2 focus:ring-red-500"
+                  className="w-full bg-background border border-border rounded-lg p-2 text-xs text-foreground focus:ring-2 focus:ring-destructive/20"
                 >
                   <option value="Night (After 7 PM)">Night (After 7 PM)</option>
-                  <option value="Late Night / Midnight">Late Night / Midnight</option>
-                  <option value="Early Morning (4 AM - 6 AM)">Early Morning (4 AM - 6 AM)</option>
+                  <option value="Late Night / Midnight">
+                    Late Night / Midnight
+                  </option>
+                  <option value="Early Morning (4 AM - 6 AM)">
+                    Early Morning (4 AM - 6 AM)
+                  </option>
                   <option value="Always / All Hours">Always / All Hours</option>
                 </select>
               </div>
@@ -352,7 +384,11 @@ export default function ReportForm({
             <Input
               type="text"
               {...register("address")}
-              placeholder={geocoding ? "Detecting address..." : "e.g. Near Argwings Kodhek Rd junction"}
+              placeholder={
+                geocoding
+                  ? "Detecting address..."
+                  : "e.g. Near Argwings Kodhek Rd junction"
+              }
             />
           </div>
 
@@ -401,19 +437,32 @@ export default function ReportForm({
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
                 Your Name
               </label>
-              <Input type="text" {...register("reporterName")} placeholder="Jane Doe" />
+              <Input
+                type="text"
+                {...register("reporterName")}
+                placeholder="Jane Doe"
+              />
             </div>
             <div className="space-y-1.5">
               <label className="font-semibold text-foreground flex items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                 Your Email
               </label>
-              <Input type="email" {...register("reporterEmail")} placeholder="jane@example.com" />
+              <Input
+                type="email"
+                {...register("reporterEmail")}
+                placeholder="jane@example.com"
+              />
             </div>
           </div>
 
           <div className="flex gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={onClose} className="w-1/2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="w-1/2"
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={submitting} className="w-1/2">

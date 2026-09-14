@@ -14,7 +14,12 @@ import {
 import type { Issue } from "../../../types/issue";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "../../../types/issue";
 import { relativeTime } from "../../../lib/relativeTime";
-import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardFooter,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CategoryIcon } from "../../../components/CategoryIcon";
 import CommentSection from "./CommentSection";
@@ -32,11 +37,16 @@ const STATUS_OPTIONS = [
   { value: "closed", label: "Closed" },
 ] as const;
 
-export default function IssueCard({ issue, onStatusChange, isEditable = false }: IssueCardProps) {
+export default function IssueCard({
+  issue,
+  onStatusChange,
+  isEditable = false,
+}: IssueCardProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<string>(issue.status);
 
-  const categoryColor = CATEGORY_COLORS[issue.category] || "#64748b";
+  const categoryColor =
+    CATEGORY_COLORS[issue.category] || "var(--category-other)";
 
   // Dynamic status styling helper supporting normalized status keys
   const getStatusBadge = (statusKey: string) => {
@@ -47,31 +57,39 @@ export default function IssueCard({ issue, onStatusChange, isEditable = false }:
       case "fixed":
         return {
           color:
-            "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 ring-emerald-500/20",
-          icon: <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />,
+            "bg-primary/10 text-primary dark:text-primary border-primary/30 ring-primary/20",
+          icon: (
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          ),
           label: "Resolved",
         };
       case "in_progress":
       case "under_review":
         return {
           color:
-            "bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/30 ring-blue-500/20",
-          icon: <AlertCircle className="h-3.5 w-3.5 shrink-0 text-blue-500 animate-pulse" />,
+            "bg-primary/10 text-primary dark:text-primary border-primary/30 ring-primary/20",
+          icon: (
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-primary animate-pulse" />
+          ),
           label: "In Progress",
         };
       case "closed":
       case "rejected":
         return {
           color:
-            "bg-slate-500/10 text-slate-700 dark:text-slate-400 border-slate-500/30 ring-slate-500/20",
-          icon: <XCircle className="h-3.5 w-3.5 shrink-0 text-slate-500" />,
+            "bg-muted/10 text-foreground dark:text-muted-foreground border-border/30 ring-ring/20",
+          icon: (
+            <XCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          ),
           label: "Closed",
         };
       default:
         return {
           color:
-            "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30 ring-amber-500/20",
-          icon: <Clock3 className="h-3.5 w-3.5 shrink-0 text-amber-500" />,
+            "bg-accent/10 text-accent-foreground dark:text-accent-foreground border-accent/30 ring-ring/20",
+          icon: (
+            <Clock3 className="h-3.5 w-3.5 shrink-0 text-accent-foreground" />
+          ),
           label: "Open",
         };
     }
@@ -99,15 +117,15 @@ export default function IssueCard({ issue, onStatusChange, isEditable = false }:
   const statusConfig = getStatusBadge(currentStatus);
 
   return (
-    <Card className="group overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/90 text-slate-900 dark:text-slate-100 shadow-sm hover:shadow-md transition-all duration-300">
+    <Card className="group overflow-hidden rounded-2xl border border-border dark:border-border/80 bg-card dark:bg-background/90 text-foreground dark:text-foreground shadow-sm hover:shadow-md transition-all duration-300">
       {/* Top Bar: Category & Dynamic Interactive Status Selector */}
-      <CardHeader className="p-4 sm:p-5 pb-3 flex-row items-center justify-between space-y-0 gap-3 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-950/30">
+      <CardHeader className="p-4 sm:p-5 pb-3 flex-row items-center justify-between space-y-0 gap-3 border-b border-border dark:border-border/60 bg-muted/50 dark:bg-background/30">
         <Badge
           variant="outline"
           style={{
-            backgroundColor: `${categoryColor}15`,
+            backgroundColor: `color-mix(in oklch, ${categoryColor} 12%, transparent)`,
             color: categoryColor,
-            borderColor: `${categoryColor}35`,
+            borderColor: `color-mix(in oklch, ${categoryColor} 28%, transparent)`,
           }}
           className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold tracking-wider uppercase rounded-lg transition-colors shrink-0 shadow-xs"
         >
@@ -119,7 +137,7 @@ export default function IssueCard({ issue, onStatusChange, isEditable = false }:
         {isEditable || onStatusChange ? (
           <div className="relative inline-flex items-center">
             {isUpdating && (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400 absolute left-2 z-10" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground absolute left-2 z-10" />
             )}
             <select
               value={currentStatus}
@@ -133,7 +151,7 @@ export default function IssueCard({ issue, onStatusChange, isEditable = false }:
                 <option
                   key={opt.value}
                   value={opt.value}
-                  className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-normal"
+                  className="bg-card dark:bg-background text-foreground dark:text-foreground font-normal"
                 >
                   {opt.label}
                 </option>
@@ -154,18 +172,18 @@ export default function IssueCard({ issue, onStatusChange, isEditable = false }:
       {/* Main Content Body */}
       <CardContent className="p-4 sm:p-5 space-y-4">
         {/* Issue Description */}
-        <p className="text-slate-800 dark:text-slate-200 text-sm sm:text-base leading-relaxed font-normal">
+        <p className="text-foreground dark:text-foreground text-sm sm:text-base leading-relaxed font-normal">
           {issue.description}
         </p>
 
         {/* Official Department Update Banner */}
         {issue.official_notes && (
-          <div className="rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/80 dark:border-blue-800/50 p-3.5 text-slate-800 dark:text-slate-200 text-xs space-y-1.5 shadow-2xs">
-            <div className="flex items-center gap-1.5 font-semibold text-blue-700 dark:text-blue-400 text-[11px] uppercase tracking-wide">
+          <div className="rounded-xl bg-primary/10 dark:bg-primary/10 border border-primary/30 p-3.5 text-foreground dark:text-foreground text-xs space-y-1.5 shadow-2xs">
+            <div className="flex items-center gap-1.5 font-semibold text-primary dark:text-primary text-[11px] uppercase tracking-wide">
               <Building2 className="h-3.5 w-3.5 shrink-0" />
               <span>Official Department Update</span>
             </div>
-            <p className="leading-relaxed text-slate-700 dark:text-slate-300">
+            <p className="leading-relaxed text-foreground dark:text-muted-foreground">
               {issue.official_notes}
             </p>
           </div>
@@ -173,14 +191,14 @@ export default function IssueCard({ issue, onStatusChange, isEditable = false }:
 
         {/* Additional Sub-details */}
         {issue.sub_detail && !issue.official_notes && (
-          <div className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed bg-slate-100/70 dark:bg-slate-800/40 px-3.5 py-2.5 rounded-xl border-l-3 border-blue-500">
+          <div className="text-foreground dark:text-muted-foreground text-xs leading-relaxed bg-muted/70 dark:bg-muted/40 px-3.5 py-2.5 rounded-xl border-l-3 border-primary">
             {issue.sub_detail}
           </div>
         )}
 
         {/* Attached Evidence Image */}
         {issue.photo_base64 && (
-          <div className="relative rounded-xl overflow-hidden border border-slate-200/80 dark:border-slate-800 bg-slate-900 max-h-96 group/photo">
+          <div className="relative rounded-xl overflow-hidden border border-border/80 dark:border-border bg-background max-h-96 group/photo">
             <img
               src={issue.photo_base64}
               alt="Report evidence"
@@ -192,22 +210,23 @@ export default function IssueCard({ issue, onStatusChange, isEditable = false }:
       </CardContent>
 
       {/* Footer Metadata */}
-      <CardFooter className="px-4 sm:px-5 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 gap-2 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/30 dark:bg-slate-950/20">
-        <div className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-300 truncate max-w-full">
-          <MapPin className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+      <CardFooter className="px-4 sm:px-5 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-muted-foreground dark:text-muted-foreground gap-2 border-t border-border dark:border-border/60 bg-muted/30 dark:bg-background/20">
+        <div className="flex items-center gap-1.5 font-medium text-foreground dark:text-muted-foreground truncate max-w-full">
+          <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
           <span className="truncate">
-            {issue.address || `${issue.lat?.toFixed(4)}, ${issue.lng?.toFixed(4)}`}
+            {issue.address ||
+              `${issue.lat?.toFixed(4)}, ${issue.lng?.toFixed(4)}`}
           </span>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-slate-200/50 dark:border-slate-800/50 pt-2 sm:pt-0">
+        <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-border/50 dark:border-border/50 pt-2 sm:pt-0">
           {issue.reporter_name && (
             <span className="flex items-center gap-1 font-medium">
-              <User className="h-3 w-3 text-slate-400" />
+              <User className="h-3 w-3 text-muted-foreground" />
               {issue.reporter_name}
             </span>
           )}
-          <span className="flex items-center gap-1 text-slate-400">
+          <span className="flex items-center gap-1 text-muted-foreground">
             <Clock className="h-3 w-3" />
             {relativeTime(issue.created_at)}
           </span>
@@ -215,7 +234,7 @@ export default function IssueCard({ issue, onStatusChange, isEditable = false }:
       </CardFooter>
 
       {/* Integrated Comments Feed */}
-      <div className="p-4 sm:p-5 pt-3 border-t border-slate-100 dark:border-slate-800/60 bg-slate-50/50 dark:bg-slate-950/40">
+      <div className="p-4 sm:p-5 pt-3 border-t border-border dark:border-border/60 bg-muted/50 dark:bg-background/40">
         <CommentSection issueId={issue.id} />
       </div>
     </Card>
