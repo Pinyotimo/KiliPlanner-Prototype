@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Send, User, Loader2 } from "lucide-react";
-import { supabase } from "../lib/supabaseClient";
-import type { Comment } from "../types/issue";
-import { relativeTime } from "../lib/relativeTime";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
+import { supabase } from "../../../lib/supabaseClient";
+import type { Comment } from "../../../types/issue";
+import { relativeTime } from "../../../lib/relativeTime";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
 
 interface CommentSectionProps {
   issueId: string;

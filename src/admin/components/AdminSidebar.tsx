@@ -6,6 +6,7 @@ const links = [
   ["Live Map", "/planner/map"],
   ["Issues", "/planner/issues"],
   ["Analytics", "/planner/analytics"],
+  ["Notifications", "/planner/notifications"],
   ["Reports", "/planner/reports"],
   ["Settings", "/planner/settings"],
 ] as const;
@@ -15,7 +16,7 @@ type AdminSidebarProps = {
   onMobileClose: () => void;
 };
 
-type IconName = "dashboard" | "map" | "issues" | "analytics" | "reports" | "settings";
+type IconName = "dashboard" | "map" | "issues" | "analytics" | "notifications" | "reports" | "settings";
 
 function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, string> = {
@@ -23,6 +24,7 @@ function Icon({ name }: { name: IconName }) {
     map: "m3 6 6-3 6 3 6-3v14l-6 3-6-3-6 3V6Zm6-3v14m6-11v14",
     issues: "M12 3 21 7.5v9L12 21l-9-4.5v-9L12 3Zm0 0v9m9-4.5-9 4.5-9-4.5",
     analytics: "M4 19V5m0 14h16M8 16v-4m4 4V8m4 8V5",
+    notifications: "M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4",
     reports: "M6 3h9l3 3v15H6V3Zm9 0v4h4M9 12h6m-6 4h6",
     settings: "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm0-5v2m0 13v2m9-8h-2M5 12H3m15.36-6.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64",
   };
@@ -39,6 +41,7 @@ const icons: Record<(typeof links)[number][0], IconName> = {
   "Live Map": "map",
   Issues: "issues",
   Analytics: "analytics",
+  Notifications: "notifications",
   Reports: "reports",
   Settings: "settings",
 };

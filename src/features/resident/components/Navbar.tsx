@@ -1,15 +1,17 @@
 import { Menu, Plus, MapPin, Bell } from "lucide-react";
-import { Button } from "./ui/button";
+import { Button } from "../../../components/ui/button";
 
 interface NavbarProps {
   onOpenSidebar: () => void;
   onReportClick: () => void;
+  onNotificationsClick: () => void;
   unreadCount?: number;
 }
 
 export default function Navbar({
   onOpenSidebar,
   onReportClick,
+  onNotificationsClick,
   unreadCount = 0,
 }: NavbarProps) {
   return (
@@ -47,6 +49,7 @@ export default function Navbar({
           <Button
             variant="ghost"
             size="icon"
+            onClick={onNotificationsClick}
             className="relative h-9 w-9 rounded-lg text-emerald-200 hover:text-white hover:bg-emerald-900/60 transition-colors"
             aria-label="Notifications"
           >

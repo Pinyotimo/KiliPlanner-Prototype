@@ -12,6 +12,7 @@ import {
 import type { IssueCategory } from "../types/issue";
 
 export const CATEGORY_ICONS: Record<IssueCategory, LucideIcon> = {
+  security: ShieldAlert,
   water: Droplets,
   sewage: Waves,
   waste: Trash2,

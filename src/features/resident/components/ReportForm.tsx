@@ -2,19 +2,20 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Camera, MapPin, User, Mail, AlertTriangle, Loader2 } from "lucide-react";
-import { supabase } from "../lib/supabaseClient";
-import { reverseGeocode } from "../lib/reverseGeocode";
-import type { Issue, IssueCategory } from "../types/issue";
-import { CATEGORY_LABELS, CATEGORY_COLORS } from "../types/issue";
-import { CategoryIcon } from "./CategoryIcon";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Textarea } from "./ui/textarea";
-import { cn } from "../lib/utils";
+import { Camera, MapPin, User, Mail, AlertTriangle, Loader2, ShieldAlert, Clock } from "lucide-react";
+import { supabase } from "../../../lib/supabaseClient";
+import { reverseGeocode } from "../../../lib/reverseGeocode";
+import type { Issue, IssueCategory } from "../../../types/issue";
+import { CATEGORY_LABELS, CATEGORY_COLORS } from "../../../types/issue";
+import { CategoryIcon } from "../../../components/CategoryIcon";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Textarea } from "../../../components/ui/textarea";
+import { cn } from "../../../lib/utils";
 
 const CATEGORIES: [IssueCategory, ...IssueCategory[]] = [
+  "security",
   "water",
   "sewage",
   "waste",
@@ -41,6 +42,7 @@ const reportSchema = z.object({
     .or(z.literal(""))
     .optional(),
   photoBase64: z.string().nullable().optional(),
+  unsafeTime: z.string().optional(),
 });
 
 type ReportFormValues = z.infer<typeof reportSchema>;
@@ -53,7 +55,6 @@ interface ReportFormProps {
   onSubmitted: () => void;
 }
 
-// Haversine distance calculator to detect nearby duplicate reports
 function getDistanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371e3;
   const φ1 = (lat1 * Math.PI) / 180;
@@ -90,20 +91,20 @@ export default function ReportForm({
   } = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
-      category: "water",
+      category: "security",
       description: "",
       subDetail: "",
       address: "",
       reporterName: "",
       reporterEmail: "",
       photoBase64: null,
+      unsafeTime: "Night (After 7 PM)",
     },
   });
 
   const selectedCategory = watch("category");
   const photoBase64 = watch("photoBase64");
 
-  // Auto-fetch reverse geocoded address when form opens
   useEffect(() => {
     let isMounted = true;
     setGeocoding(true);
@@ -122,7 +123,6 @@ export default function ReportForm({
     };
   }, [lat, lng, setValue]);
 
-  // Check for nearby duplicate reports within 50 meters in the same category
   useEffect(() => {
     if (!existingIssues || existingIssues.length === 0) {
       setNearbyDuplicate(null);
@@ -138,7 +138,6 @@ export default function ReportForm({
     setNearbyDuplicate(duplicate || null);
   }, [selectedCategory, lat, lng, existingIssues]);
 
-  // Handle image attachment & compression
   function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) {
@@ -183,7 +182,6 @@ export default function ReportForm({
     reader.readAsDataURL(file);
   }
 
-  // Endorse existing duplicate instead of making a new post
   async function handleUpvoteExisting() {
     if (!nearbyDuplicate) return;
     setSubmitting(true);
@@ -206,10 +204,11 @@ export default function ReportForm({
     }
   }
 
-  // Create new issue report
   async function onSubmit(data: ReportFormValues) {
     setSubmitting(true);
     setServerError(null);
+
+    const isSecurity = data.category === "security";
 
     const { error } = await supabase.from("issues").insert({
       category: data.category,
@@ -223,6 +222,8 @@ export default function ReportForm({
       photo_base64: data.photoBase64 || null,
       status: "open",
       upvotes: 1,
+      is_security_alert: isSecurity,
+      unsafe_time: isSecurity ? data.unsafeTime || "Night (After 7 PM)" : null,
     });
 
     setSubmitting(false);
@@ -241,7 +242,7 @@ export default function ReportForm({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base font-bold">
             <AlertTriangle className="h-5 w-5 text-primary" />
-            Report an Issue
+            Report an Issue or Safety Concern
           </DialogTitle>
         </DialogHeader>
 
@@ -251,7 +252,6 @@ export default function ReportForm({
           </div>
         )}
 
-        {/* Nearby Duplicate Warning Banner */}
         {nearbyDuplicate && (
           <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl text-amber-900 dark:text-amber-200">
             <p className="font-semibold text-xs mb-1">
@@ -272,7 +272,6 @@ export default function ReportForm({
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-xs">
-          {/* Category Selection Grid */}
           <div className="space-y-2">
             <label className="font-semibold text-foreground block">
               Select Category *
@@ -286,9 +285,7 @@ export default function ReportForm({
                   <button
                     key={cat}
                     type="button"
-                    onClick={() =>
-                      setValue("category", cat, { shouldValidate: true })
-                    }
+                    onClick={() => setValue("category", cat, { shouldValidate: true })}
                     className={cn(
                       "flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all cursor-pointer",
                       isSelected
@@ -299,9 +296,6 @@ export default function ReportForm({
                       backgroundColor: isSelected ? `${color}18` : undefined,
                       borderColor: isSelected ? color : undefined,
                       color: isSelected ? color : undefined,
-                      boxShadow: isSelected
-                        ? `0 0 0 1px ${color}`
-                        : undefined,
                     }}
                   >
                     <CategoryIcon category={cat} className="h-4 w-4 shrink-0" />
@@ -312,14 +306,36 @@ export default function ReportForm({
                 );
               })}
             </div>
-            {errors.category && (
-              <p className="text-destructive text-[11px]">
-                {errors.category.message}
-              </p>
-            )}
           </div>
 
-          {/* Location Landmark / Address */}
+          {/* Conditional Safety Field for Security Reports */}
+          {selectedCategory === "security" && (
+            <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-xl space-y-2">
+              <div className="flex items-center gap-1.5 font-bold text-red-600 dark:text-red-400">
+                <ShieldAlert className="h-4 w-4" />
+                <span>Security Priority Alert</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                This report will be pinned as high-priority on community feeds and maps to alert residents and local security officers.
+              </p>
+              <div className="space-y-1 pt-1">
+                <label className="font-semibold text-foreground flex items-center gap-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  When is this area most unsafe?
+                </label>
+                <select
+                  {...register("unsafeTime")}
+                  className="w-full bg-background border border-border rounded-lg p-2 text-xs text-foreground focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="Night (After 7 PM)">Night (After 7 PM)</option>
+                  <option value="Late Night / Midnight">Late Night / Midnight</option>
+                  <option value="Early Morning (4 AM - 6 AM)">Early Morning (4 AM - 6 AM)</option>
+                  <option value="Always / All Hours">Always / All Hours</option>
+                </select>
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <label className="font-semibold text-foreground flex items-center justify-between">
               <span className="flex items-center gap-1.5">
@@ -338,14 +354,8 @@ export default function ReportForm({
               {...register("address")}
               placeholder={geocoding ? "Detecting address..." : "e.g. Near Argwings Kodhek Rd junction"}
             />
-            {errors.address && (
-              <p className="text-destructive text-[11px]">
-                {errors.address.message}
-              </p>
-            )}
           </div>
 
-          {/* Description Field */}
           <div className="space-y-1.5">
             <label className="font-semibold text-foreground block">
               Description *
@@ -353,16 +363,14 @@ export default function ReportForm({
             <Textarea
               rows={3}
               {...register("description")}
-              placeholder="Describe what's happening..."
+              placeholder={
+                selectedCategory === "security"
+                  ? "Describe safety hazards (e.g., muggings, poor street lighting, suspicious activity)..."
+                  : "Describe what's happening..."
+              }
             />
-            {errors.description && (
-              <p className="text-destructive text-[11px]">
-                {errors.description.message}
-              </p>
-            )}
           </div>
 
-          {/* Sub-Detail Field */}
           <div className="space-y-1.5">
             <label className="font-semibold text-foreground block">
               Specific Detail / Sub-location (Optional)
@@ -370,11 +378,10 @@ export default function ReportForm({
             <Input
               type="text"
               {...register("subDetail")}
-              placeholder="e.g. Broken pipe in front of Gate B"
+              placeholder="e.g. Unlit alleyway near gate"
             />
           </div>
 
-          {/* Attach Photo Field */}
           <div className="space-y-1.5">
             <label className="font-semibold text-foreground flex items-center gap-1.5">
               <Camera className="h-4 w-4 text-muted-foreground" />
@@ -386,69 +393,27 @@ export default function ReportForm({
               onChange={handlePhotoChange}
               className="cursor-pointer"
             />
-            {photoBase64 && (
-              <div className="mt-2 relative rounded-lg overflow-hidden border border-border max-h-32">
-                <img
-                  src={photoBase64}
-                  alt="Preview"
-                  className="w-full h-32 object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => setValue("photoBase64", null)}
-                  className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold transition-colors cursor-pointer"
-                  title="Remove photo"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
           </div>
 
-          {/* Reporter Details */}
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
               <label className="font-semibold text-foreground flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
                 Your Name
               </label>
-              <Input
-                type="text"
-                {...register("reporterName")}
-                placeholder="Jane Doe"
-              />
-              {errors.reporterName && (
-                <p className="text-destructive text-[11px]">
-                  {errors.reporterName.message}
-                </p>
-              )}
+              <Input type="text" {...register("reporterName")} placeholder="Jane Doe" />
             </div>
             <div className="space-y-1.5">
               <label className="font-semibold text-foreground flex items-center gap-1.5">
                 <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                 Your Email
               </label>
-              <Input
-                type="email"
-                {...register("reporterEmail")}
-                placeholder="jane@example.com"
-              />
-              {errors.reporterEmail && (
-                <p className="text-destructive text-[11px]">
-                  {errors.reporterEmail.message}
-                </p>
-              )}
+              <Input type="email" {...register("reporterEmail")} placeholder="jane@example.com" />
             </div>
           </div>
 
-          {/* Form Action Buttons */}
           <div className="flex gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              className="w-1/2"
-            >
+            <Button type="button" variant="outline" onClick={onClose} className="w-1/2">
               Cancel
             </Button>
             <Button type="submit" disabled={submitting} className="w-1/2">
