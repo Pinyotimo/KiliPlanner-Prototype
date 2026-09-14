@@ -25,7 +25,12 @@ import type { Issue, IssueCategory } from "../../../types/issue";
 import { CATEGORY_COLORS, CATEGORY_LABELS } from "../../../types/issue";
 import { relativeTime } from "../../../lib/relativeTime";
 import { CategoryIcon } from "../../../components/CategoryIcon";
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../../components/ui/card";
 import { Badge } from "../../../components/ui/badge";
 
 const CATEGORY_ORDER: IssueCategory[] = [
@@ -46,14 +51,19 @@ interface StatsPanelProps {
   onNavigateToFeed?: (issueId: string) => void;
 }
 
-export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps) {
-  const [selectedCategory, setSelectedCategory] = useState<IssueCategory | "all">("all");
+export default function StatsPanel({
+  issues,
+  onNavigateToFeed,
+}: StatsPanelProps) {
+  const [selectedCategory, setSelectedCategory] = useState<
+    IssueCategory | "all"
+  >("all");
 
   // 24-Hour Activity Calculation
   const last24hCount = useMemo(() => {
     const cutoff = Date.now() - TWENTY_FOUR_HOURS_MS;
     return issues.filter(
-      (issue) => new Date(issue.created_at).getTime() >= cutoff
+      (issue) => new Date(issue.created_at).getTime() >= cutoff,
     ).length;
   }, [issues]);
 
@@ -66,7 +76,11 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
     for (const issue of issues) {
       if (issue.status === "open") open++;
       else if (issue.status === "in_progress") inProgress++;
-      else if (issue.status === "resolved" || (issue.status as string) === "closed") resolved++;
+      else if (
+        issue.status === "resolved" ||
+        (issue.status as string) === "closed"
+      )
+        resolved++;
     }
 
     const total = issues.length;
@@ -83,13 +97,17 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
       const catIssues = issues.filter((i) => i.category === cat);
       const count = catIssues.length;
       const open = catIssues.filter((i) => i.status === "open").length;
-      const inProgress = catIssues.filter((i) => i.status === "in_progress").length;
+      const inProgress = catIssues.filter(
+        (i) => i.status === "in_progress",
+      ).length;
       const resolved = catIssues.filter(
-        (i) => i.status === "resolved" || (i.status as string) === "closed"
+        (i) => i.status === "resolved" || (i.status as string) === "closed",
       ).length;
 
-      const resolutionRate = count > 0 ? Math.round((resolved / count) * 100) : 0;
-      const sharePercentage = totalIssues > 0 ? Math.round((count / totalIssues) * 100) : 0;
+      const resolutionRate =
+        count > 0 ? Math.round((resolved / count) * 100) : 0;
+      const sharePercentage =
+        totalIssues > 0 ? Math.round((count / totalIssues) * 100) : 0;
 
       return {
         category: cat,
@@ -107,9 +125,10 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
 
   // Filtered Issues for Recent Feed
   const recentIssues = useMemo(() => {
-    const filtered = selectedCategory === "all"
-      ? issues
-      : issues.filter((i) => i.category === selectedCategory);
+    const filtered =
+      selectedCategory === "all"
+        ? issues
+        : issues.filter((i) => i.category === selectedCategory);
     return filtered.slice(0, RECENT_FEED_LIMIT);
   }, [issues, selectedCategory]);
 
@@ -126,66 +145,82 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
   };
 
   return (
-    <div className="w-full flex-1 space-y-6 text-slate-100">
+    <div className="w-full flex-1 space-y-6 text-foreground">
       {/* Top Status KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-slate-800 bg-slate-900 text-slate-100 shadow-sm">
+        <Card className="border-border bg-background text-foreground shadow-sm">
           <CardHeader className="p-4 pb-1">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
               24h New Reports
-              <Clock className="h-4 w-4 text-blue-400" />
+              <Clock className="h-4 w-4 text-primary" />
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-1">
-            <div className="text-2xl font-extrabold text-blue-400">{last24hCount}</div>
-            <p className="text-[11px] text-slate-400 mt-0.5">submitted today</p>
+            <div className="text-2xl font-extrabold text-primary">
+              {last24hCount}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              submitted today
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-800 bg-slate-900 text-slate-100 shadow-sm">
+        <Card className="border-border bg-background text-foreground shadow-sm">
           <CardHeader className="p-4 pb-1">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
               Open Issues
-              <ShieldAlert className="h-4 w-4 text-amber-400" />
+              <ShieldAlert className="h-4 w-4 text-accent-foreground" />
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-1">
-            <div className="text-2xl font-extrabold text-amber-400">{statusMetrics.open}</div>
-            <p className="text-[11px] text-slate-400 mt-0.5">awaiting action</p>
+            <div className="text-2xl font-extrabold text-accent-foreground">
+              {statusMetrics.open}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              awaiting action
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-800 bg-slate-900 text-slate-100 shadow-sm">
+        <Card className="border-border bg-background text-foreground shadow-sm">
           <CardHeader className="p-4 pb-1">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
               In Progress
-              <TrendingUp className="h-4 w-4 text-blue-400" />
+              <TrendingUp className="h-4 w-4 text-primary" />
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-1">
-            <div className="text-2xl font-extrabold text-blue-400">{statusMetrics.inProgress}</div>
-            <p className="text-[11px] text-slate-400 mt-0.5">being addressed</p>
+            <div className="text-2xl font-extrabold text-primary">
+              {statusMetrics.inProgress}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              being addressed
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-800 bg-slate-900 text-slate-100 shadow-sm">
+        <Card className="border-border bg-background text-foreground shadow-sm">
           <CardHeader className="p-4 pb-1">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
               Resolved ({statusMetrics.resolutionRate}%)
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+              <CheckCircle2 className="h-4 w-4 text-primary" />
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-1">
-            <div className="text-2xl font-extrabold text-emerald-400">{statusMetrics.resolved}</div>
-            <p className="text-[11px] text-slate-400 mt-0.5">total issues fixed</p>
+            <div className="text-2xl font-extrabold text-primary">
+              {statusMetrics.resolved}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              total issues fixed
+            </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Category Filter Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        <span className="text-xs font-semibold text-slate-400 flex items-center gap-1.5 pr-2">
-          <Layers className="h-4 w-4 text-blue-400" />
+        <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 pr-2">
+          <Layers className="h-4 w-4 text-primary" />
           Filter:
         </span>
         <button
@@ -193,8 +228,8 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
           onClick={() => setSelectedCategory("all")}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
             selectedCategory === "all"
-              ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-              : "bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700 hover:text-slate-200"
+              ? "bg-primary text-primary-foreground shadow-md shadow-foreground/20"
+              : "bg-background text-muted-foreground border border-border hover:border-border hover:text-foreground"
           }`}
         >
           All Categories ({issues.length})
@@ -206,11 +241,14 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
             onClick={() => setSelectedCategory(cat.category)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap cursor-pointer ${
               selectedCategory === cat.category
-                ? "bg-slate-800 text-slate-100 ring-1 ring-slate-700 shadow-sm"
-                : "bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700 hover:text-slate-200"
+                ? "bg-muted text-foreground ring-1 ring-ring shadow-sm"
+                : "bg-background text-muted-foreground border border-border hover:border-border hover:text-foreground"
             }`}
           >
-            <span style={{ color: cat.fill }} className="inline-flex items-center">
+            <span
+              style={{ color: cat.fill }}
+              className="inline-flex items-center"
+            >
               <CategoryIcon category={cat.category} className="h-3.5 w-3.5" />
             </span>
             {cat.name} ({cat.count})
@@ -221,11 +259,11 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
       {/* Category Analytics Dashboard Charts */}
       <div className="grid gap-6 xl:grid-cols-3">
         {/* Reports volume Bar Chart */}
-        <Card className="border-slate-800 bg-slate-900 text-slate-100 shadow-sm xl:col-span-2">
+        <Card className="border-border bg-background text-foreground shadow-sm xl:col-span-2">
           <CardHeader className="p-5 pb-2">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-blue-300 flex items-center justify-between">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-primary flex items-center justify-between">
               <span>Category Volume & Distribution</span>
-              <BarChart3 className="h-4 w-4 text-slate-500" />
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardTitle>
           </CardHeader>
           <CardContent className="p-5 pt-4">
@@ -235,40 +273,57 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
                   data={categoryAnalytics}
                   margin={{ top: 15, right: 15, left: -20, bottom: 35 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="var(--chart-grid)"
+                    vertical={false}
+                  />
                   <XAxis
                     dataKey="name"
-                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                    tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
                     interval={0}
                     angle={-25}
                     textAnchor="end"
                     tickLine={false}
-                    axisLine={{ stroke: "#334155" }}
+                    axisLine={{ stroke: "var(--chart-grid)" }}
                   />
                   <YAxis
                     allowDecimals={false}
-                    tick={{ fontSize: 11, fill: "#94a3b8" }}
+                    tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
                     tickLine={false}
-                    axisLine={{ stroke: "#334155" }}
+                    axisLine={{ stroke: "var(--chart-grid)" }}
                   />
                   <Tooltip
-                    cursor={{ fill: "rgba(255, 255, 255, 0.04)" }}
+                    cursor={{ fill: "var(--chart-cursor)" }}
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
                         return (
-                          <div className="rounded-lg border border-slate-800 bg-slate-950/95 backdrop-blur-md p-3 text-xs text-slate-100 shadow-xl space-y-1">
+                          <div className="rounded-lg border border-border bg-background/95 backdrop-blur-md p-3 text-xs text-foreground shadow-xl space-y-1">
                             <div className="flex items-center gap-2 font-semibold">
-                              <span style={{ color: data.fill }} className="inline-flex items-center">
-                                <CategoryIcon category={data.category} className="h-4 w-4" />
+                              <span
+                                style={{ color: data.fill }}
+                                className="inline-flex items-center"
+                              >
+                                <CategoryIcon
+                                  category={data.category}
+                                  className="h-4 w-4"
+                                />
                               </span>
                               <span>{data.name}</span>
                             </div>
-                            <p className="text-slate-400">
-                              Total Reports: <span className="text-blue-400 font-bold">{data.count}</span> ({data.sharePercentage}% share)
+                            <p className="text-muted-foreground">
+                              Total Reports:{" "}
+                              <span className="text-primary font-bold">
+                                {data.count}
+                              </span>{" "}
+                              ({data.sharePercentage}% share)
                             </p>
-                            <p className="text-slate-400">
-                              Resolution Rate: <span className="text-emerald-400 font-bold">{data.resolutionRate}%</span>
+                            <p className="text-muted-foreground">
+                              Resolution Rate:{" "}
+                              <span className="text-primary font-bold">
+                                {data.resolutionRate}%
+                              </span>
                             </p>
                           </div>
                         );
@@ -281,7 +336,12 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
                       <Cell
                         key={entry.category}
                         fill={entry.fill}
-                        opacity={selectedCategory === "all" || selectedCategory === entry.category ? 1 : 0.3}
+                        opacity={
+                          selectedCategory === "all" ||
+                          selectedCategory === entry.category
+                            ? 1
+                            : 0.3
+                        }
                       />
                     ))}
                   </Bar>
@@ -292,11 +352,11 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
         </Card>
 
         {/* Share Donut Chart */}
-        <Card className="border-slate-800 bg-slate-900 text-slate-100 shadow-sm xl:col-span-1">
+        <Card className="border-border bg-background text-foreground shadow-sm xl:col-span-1">
           <CardHeader className="p-5 pb-2">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-blue-300 flex items-center justify-between">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-primary flex items-center justify-between">
               <span>Category Share</span>
-              <PieIcon className="h-4 w-4 text-slate-500" />
+              <PieIcon className="h-4 w-4 text-muted-foreground" />
             </CardTitle>
           </CardHeader>
           <CardContent className="p-5 pt-2 flex flex-col items-center justify-center">
@@ -316,7 +376,7 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
                       <Cell
                         key={entry.category}
                         fill={entry.fill}
-                        stroke="#0f172a"
+                        stroke="var(--background)"
                         strokeWidth={2}
                       />
                     ))}
@@ -326,8 +386,9 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
                       if (active && payload && payload.length) {
                         const data = payload[0].payload;
                         return (
-                          <div className="rounded-lg border border-slate-800 bg-slate-950 p-2 text-xs text-slate-100 shadow-lg">
-                            <span className="font-semibold">{data.name}:</span> {data.count} ({data.sharePercentage}%)
+                          <div className="rounded-lg border border-border bg-background p-2 text-xs text-foreground shadow-lg">
+                            <span className="font-semibold">{data.name}:</span>{" "}
+                            {data.count} ({data.sharePercentage}%)
                           </div>
                         );
                       }
@@ -337,12 +398,20 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="w-full grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] pt-2 border-t border-slate-800/80">
+            <div className="w-full grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] pt-2 border-t border-border/80">
               {categoryAnalytics.slice(0, 6).map((cat) => (
-                <div key={cat.category} className="flex items-center gap-1.5 truncate text-slate-400">
-                  <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: cat.fill }} />
+                <div
+                  key={cat.category}
+                  className="flex items-center gap-1.5 truncate text-muted-foreground"
+                >
+                  <span
+                    className="h-2 w-2 rounded-full shrink-0"
+                    style={{ backgroundColor: cat.fill }}
+                  />
                   <span className="truncate">{cat.name}</span>
-                  <span className="text-slate-200 font-semibold ml-auto">{cat.sharePercentage}%</span>
+                  <span className="text-foreground font-semibold ml-auto">
+                    {cat.sharePercentage}%
+                  </span>
                 </div>
               ))}
             </div>
@@ -352,7 +421,7 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
 
       {/* Category Performance Matrix Grid */}
       <div className="space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Category Performance Matrix
         </h3>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -361,11 +430,13 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
             return (
               <Card
                 key={cat.category}
-                onClick={() => setSelectedCategory(isSelected ? "all" : cat.category)}
-                className={`border text-slate-100 transition-all cursor-pointer ${
+                onClick={() =>
+                  setSelectedCategory(isSelected ? "all" : cat.category)
+                }
+                className={`border text-foreground transition-all cursor-pointer ${
                   isSelected
-                    ? "border-blue-500 bg-slate-850 ring-1 ring-blue-500/50 shadow-lg"
-                    : "border-slate-800 bg-slate-900 hover:border-slate-700"
+                    ? "border-primary bg-background ring-1 ring-primary/20 shadow-lg"
+                    : "border-border bg-background hover:border-border"
                 }`}
               >
                 <CardHeader className="p-4 pb-2">
@@ -373,17 +444,23 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
                     <div className="flex items-center gap-2">
                       <div
                         className="p-1.5 rounded-md"
-                        style={{ backgroundColor: `${cat.fill}20`, color: cat.fill }}
+                        style={{
+                          backgroundColor: `${cat.fill}20`,
+                          color: cat.fill,
+                        }}
                       >
-                        <CategoryIcon category={cat.category} className="h-4 w-4" />
+                        <CategoryIcon
+                          category={cat.category}
+                          className="h-4 w-4"
+                        />
                       </div>
-                      <CardTitle className="text-xs font-bold text-slate-200">
+                      <CardTitle className="text-xs font-bold text-foreground">
                         {cat.name}
                       </CardTitle>
                     </div>
                     <Badge
                       variant="outline"
-                      className="border-slate-700 bg-slate-950 text-slate-300 text-[10px] px-1.5 py-0.5"
+                      className="border-border bg-background text-muted-foreground text-[10px] px-1.5 py-0.5"
                     >
                       {cat.count} total
                     </Badge>
@@ -393,12 +470,16 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
                   {/* Resolution Progress Bar */}
                   <div>
                     <div className="flex items-center justify-between text-[11px] mb-1">
-                      <span className="text-slate-400">Resolution Rate</span>
-                      <span className="font-bold text-emerald-400">{cat.resolutionRate}%</span>
+                      <span className="text-muted-foreground">
+                        Resolution Rate
+                      </span>
+                      <span className="font-bold text-primary">
+                        {cat.resolutionRate}%
+                      </span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
+                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                       <div
-                        className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                        className="h-full rounded-full bg-primary transition-all duration-500"
                         style={{ width: `${cat.resolutionRate}%` }}
                       />
                     </div>
@@ -406,17 +487,23 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
 
                   {/* Status Pills Breakdown */}
                   <div className="grid grid-cols-3 gap-1 pt-1 text-[10px] text-center">
-                    <div className="rounded bg-amber-500/10 border border-amber-500/20 py-1 text-amber-400">
+                    <div className="rounded bg-accent/10 border border-accent/20 py-1 text-accent-foreground">
                       <div className="font-bold">{cat.open}</div>
-                      <div className="text-[9px] text-slate-400">Open</div>
+                      <div className="text-[9px] text-muted-foreground">
+                        Open
+                      </div>
                     </div>
-                    <div className="rounded bg-blue-500/10 border border-blue-500/20 py-1 text-blue-400">
+                    <div className="rounded bg-primary/10 border border-primary/20 py-1 text-primary">
                       <div className="font-bold">{cat.inProgress}</div>
-                      <div className="text-[9px] text-slate-400">Progress</div>
+                      <div className="text-[9px] text-muted-foreground">
+                        Progress
+                      </div>
                     </div>
-                    <div className="rounded bg-emerald-500/10 border border-emerald-500/20 py-1 text-emerald-400">
+                    <div className="rounded bg-primary/10 border border-primary/20 py-1 text-primary">
                       <div className="font-bold">{cat.resolved}</div>
-                      <div className="text-[9px] text-slate-400">Fixed</div>
+                      <div className="text-[9px] text-muted-foreground">
+                        Fixed
+                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -427,24 +514,24 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
       </div>
 
       {/* Category Feed Section */}
-      <Card className="border-slate-800 bg-slate-900 text-slate-100 shadow-sm">
-        <CardHeader className="p-5 pb-3 border-b border-slate-800">
+      <Card className="border-border bg-background text-foreground shadow-sm">
+        <CardHeader className="p-5 pb-3 border-b border-border">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-blue-300 flex items-center gap-2">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-primary flex items-center gap-2">
               <span>
                 {selectedCategory === "all"
                   ? "Recent Category Reports"
                   : `${CATEGORY_LABELS[selectedCategory]} Reports`}
               </span>
             </CardTitle>
-            <span className="text-xs text-slate-400 font-normal">
+            <span className="text-xs text-muted-foreground font-normal">
               Showing {recentIssues.length} items
             </span>
           </div>
         </CardHeader>
         <CardContent className="p-5">
           {recentIssues.length === 0 ? (
-            <p className="text-xs text-slate-400 italic text-center py-6">
+            <p className="text-xs text-muted-foreground italic text-center py-6">
               No reports found for this category filter.
             </p>
           ) : (
@@ -452,7 +539,7 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
               {recentIssues.map((issue) => (
                 <div
                   key={issue.id}
-                  className="rounded-lg border border-slate-800 bg-slate-950/60 p-3.5 space-y-2 flex flex-col justify-between hover:border-slate-700 transition-colors"
+                  className="rounded-lg border border-border bg-background/60 p-3.5 space-y-2 flex flex-col justify-between hover:border-border transition-colors"
                 >
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
@@ -465,26 +552,29 @@ export default function StatsPanel({ issues, onNavigateToFeed }: StatsPanelProps
                         }}
                         className="text-[9px] font-bold gap-1 px-1.5 py-0.2"
                       >
-                        <CategoryIcon category={issue.category} className="h-2.5 w-2.5" />
+                        <CategoryIcon
+                          category={issue.category}
+                          className="h-2.5 w-2.5"
+                        />
                         {CATEGORY_LABELS[issue.category]}
                       </Badge>
-                      <span className="text-[10px] text-slate-500">
+                      <span className="text-[10px] text-muted-foreground">
                         {relativeTime(issue.created_at)}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-200 font-medium line-clamp-2 leading-snug">
+                    <p className="text-xs text-foreground font-medium line-clamp-2 leading-snug">
                       {issue.description}
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 text-[11px]">
-                    <span className="capitalize text-slate-400 text-[10px]">
+                  <div className="flex items-center justify-between pt-2 border-t border-border/60 text-[11px]">
+                    <span className="capitalize text-muted-foreground text-[10px]">
                       {issue.status.replace("_", " ")}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleDetailClick(issue.id)}
-                      className="inline-flex items-center gap-1 font-semibold text-blue-400 hover:text-blue-300 transition-colors cursor-pointer group"
+                      className="inline-flex items-center gap-1 font-semibold text-primary hover:text-primary transition-colors cursor-pointer group"
                     >
                       Details
                       <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />

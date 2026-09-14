@@ -33,7 +33,7 @@ export default function PlannerConsole() {
   const { session, loading: sessionLoading } = usePlannerSession();
   if (sessionLoading)
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-sm text-white">
+      <div className="flex min-h-screen items-center justify-center bg-background text-sm text-primary-foreground">
         Checking planner access...
       </div>
     );
@@ -120,11 +120,11 @@ function AuthenticatedPlannerConsole({ pathname }: { pathname: string }) {
     ? pathname.slice("/planner/issues/".length)
     : "";
   let page = loading ? (
-    <div className="rounded-xl border border-slate-200 bg-white p-12 text-center text-sm text-slate-500">
+    <div className="rounded-xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">
       Loading planner data...
     </div>
   ) : error ? (
-    <div className="rounded-xl border border-rose-200 bg-rose-50 p-12 text-center text-sm text-rose-700">
+    <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-12 text-center text-sm text-destructive">
       {error}
     </div>
   ) : (
@@ -205,7 +205,7 @@ function AuthenticatedPlannerConsole({ pathname }: { pathname: string }) {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-6 right-6 z-50 rounded-lg bg-emerald-700 px-4 py-3 text-sm font-medium text-white shadow-xl"
+          className="fixed bottom-6 right-6 z-50 rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-xl"
         >
           {notification}
         </div>

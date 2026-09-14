@@ -170,7 +170,9 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
       const bIsSec = b.is_security_alert || b.category === "security";
       if (aIsSec && !bIsSec) return -1;
       if (!aIsSec && bIsSec) return 1;
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      return (
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     });
   }, [issues, filter]);
 
@@ -178,17 +180,17 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
     issues.filter((i) => i.status === status).length;
 
   const countSecurity = issues.filter(
-    (i) => i.is_security_alert || i.category === "security"
+    (i) => i.is_security_alert || i.category === "security",
   ).length;
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-foreground">
             Official Workstation
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Manage and resolve issues assigned to your department.
           </p>
         </div>
@@ -198,8 +200,8 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
             onClick={() => setActiveView("issues")}
             className={`rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
               activeView === "issues"
-                ? "bg-primary text-white"
-                : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                ? "bg-primary text-primary-foreground"
+                : "border border-border bg-card text-muted-foreground hover:bg-muted"
             }`}
           >
             Issues
@@ -209,13 +211,13 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
             onClick={() => setActiveView("notifications")}
             className={`relative rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
               activeView === "notifications"
-                ? "bg-primary text-white"
-                : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                ? "bg-primary text-primary-foreground"
+                : "border border-border bg-card text-muted-foreground hover:bg-muted"
             }`}
           >
             Notifications
             {newIssueNotifications.length > 0 && (
-              <span className="ml-2 rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              <span className="ml-2 rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
                 {newIssueNotifications.length > 9
                   ? "9+"
                   : newIssueNotifications.length}
@@ -249,70 +251,77 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
         <>
           {/* Metrics Row */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="p-4 bg-white border rounded-lg shadow-sm">
-              <p className="text-xs text-gray-500 font-medium">
+            <div className="p-4 bg-card border rounded-lg shadow-sm">
+              <p className="text-xs text-muted-foreground font-medium">
                 Total Assigned
               </p>
-              <p className="text-2xl font-semibold text-gray-800">
+              <p className="text-2xl font-semibold text-foreground">
                 {issues.length}
               </p>
             </div>
-            <div className="p-4 bg-red-50/60 border border-red-200 rounded-lg shadow-sm">
-              <p className="text-xs text-red-600 font-bold uppercase tracking-wider">
+            <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg shadow-sm">
+              <p className="text-xs text-destructive font-bold uppercase tracking-wider">
                 🚨 Security Priority
               </p>
-              <p className="text-2xl font-bold text-red-700">
+              <p className="text-2xl font-bold text-destructive">
                 {countSecurity}
               </p>
             </div>
-            <div className="p-4 bg-white border rounded-lg shadow-sm">
-              <p className="text-xs text-amber-600 font-medium">Open</p>
-              <p className="text-2xl font-semibold text-amber-700">
+            <div className="p-4 bg-card border rounded-lg shadow-sm">
+              <p className="text-xs text-accent-foreground font-medium">Open</p>
+              <p className="text-2xl font-semibold text-accent-foreground">
                 {countByStatus("open")}
               </p>
             </div>
-            <div className="p-4 bg-white border rounded-lg shadow-sm">
-              <p className="text-xs text-blue-600 font-medium">In Progress</p>
-              <p className="text-2xl font-semibold text-blue-700">
+            <div className="p-4 bg-card border rounded-lg shadow-sm">
+              <p className="text-xs text-primary font-medium">In Progress</p>
+              <p className="text-2xl font-semibold text-primary">
                 {countByStatus("in_progress")}
               </p>
             </div>
-            <div className="p-4 bg-white border rounded-lg shadow-sm">
-              <p className="text-xs text-emerald-600 font-medium">Resolved</p>
-              <p className="text-2xl font-semibold text-emerald-700">
+            <div className="p-4 bg-card border rounded-lg shadow-sm">
+              <p className="text-xs text-primary font-medium">Resolved</p>
+              <p className="text-2xl font-semibold text-primary">
                 {countByStatus("resolved")}
               </p>
             </div>
           </div>
 
           {/* Filter Tabs */}
-          <div className="flex space-x-2 border-b border-gray-200 pb-2">
-            {["all", "security", "open", "in_progress", "resolved", "closed"].map(
-              (statusKey) => (
-                <button
-                  key={statusKey}
-                  onClick={() => setFilter(statusKey)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-colors ${
-                    filter === statusKey
-                      ? statusKey === "security"
-                        ? "bg-red-600 text-white"
-                        : "bg-primary text-white"
-                      : "text-gray-600 hover:bg-gray-100"
-                  }`}
-                >
-                  {statusKey === "security" ? "🚨 Security Only" : statusKey.replace("_", " ")}
-                </button>
-              ),
-            )}
+          <div className="flex space-x-2 border-b border-border pb-2">
+            {[
+              "all",
+              "security",
+              "open",
+              "in_progress",
+              "resolved",
+              "closed",
+            ].map((statusKey) => (
+              <button
+                key={statusKey}
+                onClick={() => setFilter(statusKey)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-colors ${
+                  filter === statusKey
+                    ? statusKey === "security"
+                      ? "bg-destructive text-primary-foreground"
+                      : "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {statusKey === "security"
+                  ? "🚨 Security Only"
+                  : statusKey.replace("_", " ")}
+              </button>
+            ))}
           </div>
 
           {/* Main Issue Cards Grid */}
           {loading ? (
-            <div className="text-center py-10 text-gray-500 text-sm">
+            <div className="text-center py-10 text-muted-foreground text-sm">
               Loading assigned issues...
             </div>
           ) : sortedAndFilteredIssues.length === 0 ? (
-            <div className="text-center py-10 text-gray-500 text-sm">
+            <div className="text-center py-10 text-muted-foreground text-sm">
               No issues found matching this filter.
             </div>
           ) : (

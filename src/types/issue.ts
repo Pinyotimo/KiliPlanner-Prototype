@@ -44,14 +44,14 @@ export const CATEGORY_LABELS: Record<IssueCategory, string> = {
 };
 
 export const CATEGORY_COLORS: Record<IssueCategory, string> = {
-  security: "#dc2626",
-  water: "#2563eb",
-  sewage: "#78350f",
-  waste: "#6b7280",
-  pollution: "#065f46",
-  road_damage: "#ea580c",
-  encroachment: "#7e22ce",
-  other: "#111827",
+  security: "var(--category-security)",
+  water: "var(--category-water)",
+  sewage: "var(--category-sewage)",
+  waste: "var(--category-waste)",
+  pollution: "var(--category-pollution)",
+  road_damage: "var(--category-road)",
+  encroachment: "var(--category-encroachment)",
+  other: "var(--category-other)",
 };
 
 export interface Comment {
