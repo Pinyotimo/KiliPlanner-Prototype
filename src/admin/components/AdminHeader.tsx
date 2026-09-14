@@ -84,13 +84,13 @@ export default function AdminHeader({
   }
 
   return (
-    <header className="mb-6 border-b border-slate-200 pb-5">
+    <header className="mb-6 border-b border-border pb-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
             onClick={onMenuClick}
-            className="rounded-lg border border-slate-300 bg-white p-2 text-slate-700 shadow-sm hover:bg-slate-50 lg:hidden"
+            className="rounded-lg border border-input bg-card p-2 text-foreground shadow-sm hover:bg-muted lg:hidden"
             aria-label="Open planner navigation"
             title="Open planner navigation"
           >
@@ -98,13 +98,13 @@ export default function AdminHeader({
           </button>
           <div className="min-w-0">
             {showBreadcrumb && (
-              <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <span>Planner</span>
                 <span aria-hidden="true">/</span>
                 <span className="truncate">{title}</span>
               </div>
             )}
-            <h1 className="truncate text-2xl font-bold text-slate-900">
+            <h1 className="truncate text-2xl font-bold text-foreground">
               {title}
             </h1>
           </div>
@@ -117,18 +117,18 @@ export default function AdminHeader({
                 value={searchValue}
                 onChange={(event) => onSearchChange?.(event.target.value)}
                 placeholder="Search issues"
-                className="w-48 rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                className="w-48 rounded-lg border border-input bg-card py-2 pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
-              <span className="pointer-events-none absolute left-3 top-2.5 text-slate-400">
+              <span className="pointer-events-none absolute left-3 top-2.5 text-muted-foreground">
                 <HeaderIcon type="search" />
               </span>
             </label>
           )}
           <span
-            className={`flex items-center gap-2 text-sm font-medium ${realtimeStatus === "live" ? "text-emerald-700" : "text-amber-700"}`}
+            className={`flex items-center gap-2 text-sm font-medium ${realtimeStatus === "live" ? "text-primary" : "text-accent-foreground"}`}
           >
             <span
-              className={`h-2.5 w-2.5 rounded-full ${realtimeStatus === "live" ? "bg-emerald-500" : "bg-amber-500"}`}
+              className={`h-2.5 w-2.5 rounded-full ${realtimeStatus === "live" ? "bg-primary" : "bg-accent"}`}
             />
             {statusLabel}
           </span>
@@ -136,7 +136,7 @@ export default function AdminHeader({
             type="button"
             onClick={onRefresh}
             disabled={refreshing}
-            className="inline-flex rounded-md p-1 text-blue-600 hover:bg-blue-50 hover:text-blue-800 disabled:opacity-50"
+            className="inline-flex rounded-md p-1 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-50"
             title={refreshing ? "Refreshing data" : "Refresh data"}
             aria-label={refreshing ? "Refreshing data" : "Refresh data"}
           >
@@ -146,7 +146,7 @@ export default function AdminHeader({
             <button
               type="button"
               onClick={toggleNotifications}
-              className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-200"
+              className="relative rounded-lg p-2 text-foreground hover:bg-accent"
               title="Notifications"
               aria-label={`Notifications${notifications.length ? `, ${notifications.length} unread` : ""}`}
               aria-expanded={notificationsOpen}
@@ -154,7 +154,7 @@ export default function AdminHeader({
             >
               <HeaderIcon type="bell" />
               {notifications.length > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[10px] font-bold text-white">
+                <span className="absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-primary-foreground">
                   {notifications.length > 9 ? "9+" : notifications.length}
                 </span>
               )}
@@ -162,31 +162,31 @@ export default function AdminHeader({
             {notificationsOpen && (
               <div
                 id="planner-notifications"
-                className="absolute right-0 top-11 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-3 text-left shadow-xl"
+                className="absolute right-0 top-11 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-3 text-left shadow-xl"
               >
                 <div className="flex items-center justify-between px-2 pb-2">
-                  <h2 className="text-sm font-semibold text-slate-900">
+                  <h2 className="text-sm font-semibold text-foreground">
                     Notifications
                   </h2>
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={onNotificationsRead}
-                      className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                      className="text-xs font-medium text-primary hover:text-primary"
                     >
                       Mark all read
                     </button>
                     <button
                       type="button"
                       onClick={() => setNotificationsOpen(false)}
-                      className="text-xs text-slate-500 hover:text-slate-800"
+                      className="text-xs text-muted-foreground hover:text-foreground"
                     >
                       Close
                     </button>
                   </div>
                 </div>
                 {notifications.length === 0 ? (
-                  <p className="px-2 py-5 text-sm text-slate-500">
+                  <p className="px-2 py-5 text-sm text-muted-foreground">
                     No new infrastructure reports.
                   </p>
                 ) : (
@@ -200,15 +200,15 @@ export default function AdminHeader({
                           setNotificationsOpen(false);
                           navigateToPlanner(`/planner/issues/${issue.id}`);
                         }}
-                        className="block w-full rounded-lg p-2 text-left hover:bg-slate-50"
+                        className="block w-full rounded-lg p-2 text-left hover:bg-muted"
                       >
-                        <p className="line-clamp-2 text-sm font-medium text-slate-800">
+                        <p className="line-clamp-2 text-sm font-medium text-foreground">
                           New {CATEGORY_LABELS[issue.category]} report
                         </p>
-                        <p className="mt-1 line-clamp-1 text-xs text-slate-600">
+                        <p className="mt-1 line-clamp-1 text-xs text-foreground">
                           {issue.description}
                         </p>
-                        <p className="mt-1 text-xs text-slate-400">
+                        <p className="mt-1 text-xs text-muted-foreground">
                           {relativeTime(issue.created_at)}
                         </p>
                       </button>
@@ -219,13 +219,13 @@ export default function AdminHeader({
             )}
           </div>
           <div
-            className="flex items-center gap-2 border-l border-slate-200 pl-3"
+            className="flex items-center gap-2 border-l border-border pl-3"
             aria-label="Planner profile"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-white">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-primary-foreground">
               <HeaderIcon type="user" />
             </span>
-            <span className="hidden text-sm font-semibold text-slate-700 sm:inline">
+            <span className="hidden text-sm font-semibold text-foreground sm:inline">
               Planner
             </span>
           </div>
@@ -238,7 +238,7 @@ export default function AdminHeader({
             value={searchValue}
             onChange={(event) => onSearchChange?.(event.target.value)}
             placeholder="Search issues"
-            className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-3 pr-3 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            className="w-full rounded-lg border border-input bg-card py-2 pl-3 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
         </label>
       )}

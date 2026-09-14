@@ -30,33 +30,33 @@ export default function AdminDashboard({ issues }: AdminDashboardProps) {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Reports by Category</h2>
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-foreground">Reports by Category</h2>
           <div className="mt-5 space-y-4">
             {Array.from(categoryCounts.entries()).map(([category, count]) => (
               <div key={category}>
-                <div className="mb-1 flex justify-between text-sm"><span className="text-slate-600">{CATEGORY_LABELS[category]}</span><strong>{count}</strong></div>
-                <div className="h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full" style={{ width: `${issues.length ? (count / issues.length) * 100 : 0}%`, backgroundColor: CATEGORY_COLORS[category] }} /></div>
+                <div className="mb-1 flex justify-between text-sm"><span className="text-foreground">{CATEGORY_LABELS[category]}</span><strong>{count}</strong></div>
+                <div className="h-2 rounded-full bg-muted"><div className="h-2 rounded-full" style={{ width: `${issues.length ? (count / issues.length) * 100 : 0}%`, backgroundColor: CATEGORY_COLORS[category] }} /></div>
               </div>
             ))}
-            {categoryCounts.size === 0 && <p className="text-sm text-slate-500">No reports have been submitted yet.</p>}
+            {categoryCounts.size === 0 && <p className="text-sm text-muted-foreground">No reports have been submitted yet.</p>}
           </div>
         </section>
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold text-slate-900">Reports by Status</h2>
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <h2 className="text-lg font-semibold text-foreground">Reports by Status</h2>
           <div className="mt-5 space-y-3">
-            {[['open', openCount], ['resolved', resolvedCount]].map(([status, count]) => <div key={status} className="flex items-center justify-between rounded-lg bg-slate-50 p-3 text-sm"><span className="capitalize text-slate-600">{status}</span><strong>{count}</strong></div>)}
+            {[['open', openCount], ['resolved', resolvedCount]].map(([status, count]) => <div key={status} className="flex items-center justify-between rounded-lg bg-muted p-3 text-sm"><span className="capitalize text-foreground">{status}</span><strong>{count}</strong></div>)}
           </div>
         </section>
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="text-lg font-semibold text-slate-900">Priority Attention</h2><div className="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">No critical infrastructure issues require immediate attention. Severity is not tracked in the current database schema.</div></section>
+        <section className="rounded-xl border border-border bg-card p-5 shadow-sm"><h2 className="text-lg font-semibold text-foreground">Priority Attention</h2><div className="mt-4 rounded-lg border border-dashed border-input bg-muted p-5 text-sm text-foreground">No critical infrastructure issues require immediate attention. Severity is not tracked in the current database schema.</div></section>
         <ActivityTimeline />
       </div>
 
       <div className="mt-6">
-        <div className="mb-3 flex items-center justify-between"><div><h2 className="text-lg font-semibold text-slate-900">Recent Reports</h2><p className="text-sm text-slate-500">{todayCount} submitted today.</p></div></div>
+        <div className="mb-3 flex items-center justify-between"><div><h2 className="text-lg font-semibold text-foreground">Recent Reports</h2><p className="text-sm text-muted-foreground">{todayCount} submitted today.</p></div></div>
         <IssueTable issues={issues.slice(0, 10)} />
       </div>
     </div>

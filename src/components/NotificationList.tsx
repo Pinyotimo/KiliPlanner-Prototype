@@ -31,7 +31,9 @@ export default function NotificationList({
             <Bell className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="text-lg font-bold text-foreground">New Report Notifications</h2>
+            <h2 className="text-lg font-bold text-foreground">
+              New Report Notifications
+            </h2>
             <p className="text-xs text-muted-foreground">
               {unreadCount > 0
                 ? `${unreadCount} unread reported issue${unreadCount === 1 ? "" : "s"}`
@@ -61,7 +63,8 @@ export default function NotificationList({
         <div className="space-y-3">
           {issues.map((issue) => {
             const isUnread = unreadSet.has(issue.id);
-            const categoryColor = CATEGORY_COLORS[issue.category] || "#64748b";
+            const categoryColor =
+              CATEGORY_COLORS[issue.category] || "var(--category-other)";
             const content = (
               <>
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -70,8 +73,8 @@ export default function NotificationList({
                       <Badge
                         variant="outline"
                         style={{
-                          backgroundColor: `${categoryColor}15`,
-                          borderColor: `${categoryColor}35`,
+                          backgroundColor: `color-mix(in oklch, ${categoryColor} 12%, transparent)`,
+                          borderColor: `color-mix(in oklch, ${categoryColor} 28%, transparent)`,
                           color: categoryColor,
                         }}
                         className="text-[10px] font-bold uppercase tracking-wide"
@@ -79,7 +82,7 @@ export default function NotificationList({
                         {CATEGORY_LABELS[issue.category]}
                       </Badge>
                       {isUnread && (
-                        <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                        <span className="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
                           New
                         </span>
                       )}
@@ -99,10 +102,13 @@ export default function NotificationList({
                   <span className="inline-flex min-w-0 items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5 shrink-0 text-primary" />
                     <span className="truncate">
-                      {issue.address || `${issue.lat.toFixed(4)}, ${issue.lng.toFixed(4)}`}
+                      {issue.address ||
+                        `${issue.lat.toFixed(4)}, ${issue.lng.toFixed(4)}`}
                     </span>
                   </span>
-                  <span className="capitalize">{issue.status.replace("_", " ")}</span>
+                  <span className="capitalize">
+                    {issue.status.replace("_", " ")}
+                  </span>
                 </div>
               </>
             );

@@ -297,7 +297,7 @@ export default function App() {
 
       {/* Toast Notification */}
       {justSubmitted && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-600 text-white text-xs px-4 py-2.5 rounded-lg shadow-xl z-50 animate-bounce font-medium">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-4 py-2.5 rounded-lg shadow-xl z-50 animate-bounce font-medium">
           Report published to feed successfully!
         </div>
       )}

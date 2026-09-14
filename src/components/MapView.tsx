@@ -214,7 +214,7 @@ export default function MapView({
                 <Popup className="custom-popup">
                   <div className="p-1 space-y-2 max-w-xs text-xs text-card-foreground">
                     {isSec && (
-                      <div className="bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center justify-between">
+                      <div className="bg-destructive text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded flex items-center justify-between">
                         <span className="flex items-center gap-1">
                           <ShieldAlert className="h-3 w-3" /> SECURITY ALERT
                         </span>
