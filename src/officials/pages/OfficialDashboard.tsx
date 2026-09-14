@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { OfficialIssue, IssueStatus } from "../types/official";
 import { getAssignedIssues, updateIssueStatus } from "../lib/officialQueries";
 import { IssueStatusCard } from "../components/IssueStatusCard";
@@ -11,7 +11,7 @@ import {
 } from "../../lib/notificationStorage";
 
 interface OfficialDashboardProps {
-  officialId: string; // ID of the logged-in official
+  officialId: string;
 }
 
 export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
@@ -38,7 +38,6 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
   const fetchIssues = async () => {
     setLoading(true);
     try {
-      // Fallback: Fetch assigned issues, or fetch all issues if none assigned specifically
       const data = await getAssignedIssues(officialId);
       if (data && data.length > 0) {
         setIssues(data as OfficialIssue[]);
@@ -58,11 +57,9 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
     }
   };
 
-  // Initial load and Realtime setup
   useEffect(() => {
     fetchIssues();
 
-    // Listen for local browser updates across tabs
     const handleLocalUpdate = (event: Event) => {
       const detail = (
         event as CustomEvent<{ id: string; status: OfficialIssue["status"] }>
@@ -78,7 +75,6 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
 
     window.addEventListener("planner-issue-updated", handleLocalUpdate);
 
-    // Subscribe to database changes directly from Supabase
     const channel = supabase
       .channel("official-dashboard-realtime")
       .on(
@@ -109,7 +105,15 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
           const updated = payload.new as OfficialIssue;
           setIssues((prev) =>
             prev.map((item) =>
-              String(item.id) === String(updated.id) ? updated : item,
+              String(item.id) === String(updated.id)
+                ? {
+                    ...item,
+                    ...updated,
+                    photo_base64: updated.photo_base64 ?? item.photo_base64,
+                    photo_url:
+                      (updated as any).photo_url ?? (item as any).photo_url,
+                  }
+                : item,
             ),
           );
         },
@@ -128,10 +132,8 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
     notes: string,
   ) => {
     try {
-      // 1. Update in Supabase Database
       await updateIssueStatus(issueId, status, notes);
 
-      // 2. Optimistically update local React state
       setIssues((prevIssues) =>
         prevIssues.map((item) =>
           String(item.id) === String(issueId)
@@ -140,7 +142,6 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
         ),
       );
 
-      // 3. Dispatch window event to instantly inform User Feed components on same page
       window.dispatchEvent(
         new CustomEvent("planner-issue-updated", {
           detail: { id: issueId, status },
@@ -154,13 +155,31 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
     }
   };
 
-  const filteredIssues = issues.filter((issue) => {
-    if (filter === "all") return true;
-    return issue.status === filter;
-  });
+  // Filter and sort issues so security alerts are ALWAYS prioritized at the top
+  const sortedAndFilteredIssues = useMemo(() => {
+    const filtered = issues.filter((issue) => {
+      if (filter === "all") return true;
+      if (filter === "security") {
+        return issue.is_security_alert || issue.category === "security";
+      }
+      return issue.status === filter;
+    });
+
+    return [...filtered].sort((a, b) => {
+      const aIsSec = a.is_security_alert || a.category === "security";
+      const bIsSec = b.is_security_alert || b.category === "security";
+      if (aIsSec && !bIsSec) return -1;
+      if (!aIsSec && bIsSec) return 1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [issues, filter]);
 
   const countByStatus = (status: string) =>
     issues.filter((i) => i.status === status).length;
+
+  const countSecurity = issues.filter(
+    (i) => i.is_security_alert || i.category === "security"
+  ).length;
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -229,13 +248,21 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
       ) : (
         <>
           {/* Metrics Row */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="p-4 bg-white border rounded-lg shadow-sm">
               <p className="text-xs text-gray-500 font-medium">
                 Total Assigned
               </p>
               <p className="text-2xl font-semibold text-gray-800">
                 {issues.length}
+              </p>
+            </div>
+            <div className="p-4 bg-red-50/60 border border-red-200 rounded-lg shadow-sm">
+              <p className="text-xs text-red-600 font-bold uppercase tracking-wider">
+                🚨 Security Priority
+              </p>
+              <p className="text-2xl font-bold text-red-700">
+                {countSecurity}
               </p>
             </div>
             <div className="p-4 bg-white border rounded-lg shadow-sm">
@@ -260,18 +287,20 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
 
           {/* Filter Tabs */}
           <div className="flex space-x-2 border-b border-gray-200 pb-2">
-            {["all", "open", "in_progress", "resolved", "closed"].map(
+            {["all", "security", "open", "in_progress", "resolved", "closed"].map(
               (statusKey) => (
                 <button
                   key={statusKey}
                   onClick={() => setFilter(statusKey)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-colors ${
                     filter === statusKey
-                      ? "bg-primary text-white"
+                      ? statusKey === "security"
+                        ? "bg-red-600 text-white"
+                        : "bg-primary text-white"
                       : "text-gray-600 hover:bg-gray-100"
                   }`}
                 >
-                  {statusKey.replace("_", " ")}
+                  {statusKey === "security" ? "🚨 Security Only" : statusKey.replace("_", " ")}
                 </button>
               ),
             )}
@@ -282,13 +311,13 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
             <div className="text-center py-10 text-gray-500 text-sm">
               Loading assigned issues...
             </div>
-          ) : filteredIssues.length === 0 ? (
+          ) : sortedAndFilteredIssues.length === 0 ? (
             <div className="text-center py-10 text-gray-500 text-sm">
               No issues found matching this filter.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredIssues.map((issue) => (
+              {sortedAndFilteredIssues.map((issue) => (
                 <IssueStatusCard
                   key={issue.id}
                   issue={issue}

@@ -1,4 +1,5 @@
 export type IssueCategory =
+  | "security"
   | "water"
   | "sewage"
   | "waste"
@@ -27,9 +28,12 @@ export interface Issue {
   assigned_to?: string | null;
   official_notes?: string | null;
   updated_at?: string | null;
+  is_security_alert?: boolean;
+  unsafe_time?: string | null;
 }
 
 export const CATEGORY_LABELS: Record<IssueCategory, string> = {
+  security: "Security & Safety",
   water: "Water",
   sewage: "Sewage",
   waste: "Waste",
@@ -40,6 +44,7 @@ export const CATEGORY_LABELS: Record<IssueCategory, string> = {
 };
 
 export const CATEGORY_COLORS: Record<IssueCategory, string> = {
+  security: "#dc2626",
   water: "#2563eb",
   sewage: "#78350f",
   waste: "#6b7280",
