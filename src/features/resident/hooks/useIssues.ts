@@ -7,7 +7,6 @@ interface UseIssuesOptions {
 }
 
 export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
-  // State variables
   const [issues, setIssues] = useState<Issue[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<IssueCategory | "all">("all");
   const [selectedStatus, setSelectedStatus] = useState<IssueStatus | "all">("all");
@@ -21,7 +20,6 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [refreshVersion, setRefreshVersion] = useState<number>(0);
 
-  // Initial fetch function
   const fetchIssues = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -42,12 +40,10 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
     setLoading(false);
   }, []);
 
-  // Fetch issues on mount and on explicit refresh trigger
   useEffect(() => {
     fetchIssues();
   }, [fetchIssues, refreshVersion]);
 
-  // Handle local custom events and Supabase Realtime subscriptions
   useEffect(() => {
     function handleLocalIssueUpdate(event: Event) {
       const detail = (event as CustomEvent<{ id: string; status: IssueStatus }>).detail;
@@ -90,7 +86,6 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
           setIssues((current) =>
             current.map((item) => {
               if (item.id === updated.id) {
-                // Merge new properties without overwriting existing photo data if missing in payload
                 return {
                   ...item,
                   ...updated,
@@ -132,6 +127,30 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
     };
   }, [realtimeEnabled]);
 
+  const updateIssue = async (issueId: string, updates: Partial<Issue>) => {
+    const { error: updateError } = await supabase
+      .from("issues")
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq("id", issueId);
+
+    if (updateError) throw updateError;
+
+    setIssues((current) =>
+      current.map((item) => (item.id === issueId ? { ...item, ...updates } : item))
+    );
+  };
+
+  const deleteIssue = async (issueId: string) => {
+    const { error: deleteError } = await supabase
+      .from("issues")
+      .delete()
+      .eq("id", issueId);
+
+    if (deleteError) throw deleteError;
+
+    setIssues((current) => current.filter((item) => item.id !== issueId));
+  };
+
   const refresh = useCallback(() => {
     setRefreshing(true);
     setRefreshVersion((v) => v + 1);
@@ -160,5 +179,7 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
     selectedStatus,
     setSelectedStatus,
     refetch: fetchIssues,
+    updateIssue,
+    deleteIssue,
   };
 }

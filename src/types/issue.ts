@@ -30,6 +30,8 @@ export interface Issue {
   updated_at?: string | null;
   is_security_alert?: boolean;
   unsafe_time?: string | null;
+  device_id?: string | null;
+  user_id?: string | null;
 }
 
 export const CATEGORY_LABELS: Record<IssueCategory, string> = {

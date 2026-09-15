@@ -106,7 +106,6 @@ export default function ReportForm({
     handleSubmit,
     setValue,
     watch,
-    formState: { errors },
   } = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
@@ -122,7 +121,6 @@ export default function ReportForm({
   });
 
   const selectedCategory = watch("category");
-  const photoBase64 = watch("photoBase64");
 
   useEffect(() => {
     let isMounted = true;
@@ -230,21 +228,33 @@ export default function ReportForm({
 
     const isSecurity = data.category === "security";
 
-    const { error } = await supabase.from("issues").insert({
-      category: data.category,
-      description: data.description.trim(),
-      sub_detail: data.subDetail?.trim() || null,
-      lat,
-      lng,
-      address: data.address?.trim() || null,
-      reporter_name: data.reporterName?.trim() || null,
-      reporter_email: data.reporterEmail?.trim() || null,
-      photo_base64: data.photoBase64 || null,
-      status: "open",
-      upvotes: 1,
-      is_security_alert: isSecurity,
-      unsafe_time: isSecurity ? data.unsafeTime || "Night (After 7 PM)" : null,
-    });
+    // Get or create unique browser device fingerprint
+    let deviceId = localStorage.getItem("kili_device_id");
+    if (!deviceId) {
+      deviceId = crypto.randomUUID();
+      localStorage.setItem("kili_device_id", deviceId);
+    }
+
+    const { data: newIssue, error } = await supabase
+      .from("issues")
+      .insert({
+        category: data.category,
+        description: data.description.trim(),
+        sub_detail: data.subDetail?.trim() || null,
+        lat,
+        lng,
+        address: data.address?.trim() || null,
+        reporter_name: data.reporterName?.trim() || null,
+        reporter_email: data.reporterEmail?.trim() || null,
+        photo_base64: data.photoBase64 || null,
+        status: "open",
+        upvotes: 1,
+        is_security_alert: isSecurity,
+        unsafe_time: isSecurity ? data.unsafeTime || "Night (After 7 PM)" : null,
+        device_id: deviceId,
+      })
+      .select()
+      .single();
 
     setSubmitting(false);
 
@@ -252,6 +262,16 @@ export default function ReportForm({
       console.error("Supabase insert error:", error);
       setServerError(error.message);
     } else {
+      // Save newly created issue ID locally
+      if (newIssue) {
+        const existingIds: string[] = JSON.parse(
+          localStorage.getItem("kili_my_issue_ids") || "[]"
+        );
+        localStorage.setItem(
+          "kili_my_issue_ids",
+          JSON.stringify([...existingIds, String(newIssue.id)])
+        );
+      }
       onSubmitted();
     }
   }
@@ -335,7 +355,6 @@ export default function ReportForm({
             </div>
           </div>
 
-          {/* Conditional Safety Field for Security Reports */}
           {selectedCategory === "security" && (
             <div className="bg-destructive/10 border border-destructive/30 p-3 rounded-xl space-y-2">
               <div className="flex items-center gap-1.5 font-bold text-destructive dark:text-destructive">

@@ -11,6 +11,8 @@ import { useIssues } from "./features/resident/hooks/useIssues";
 import { Info, MapPin } from "lucide-react";
 import PlannerConsole from "./admin/pages/PlannerConsole";
 import { OfficialDashboard } from "./officials/pages/OfficialDashboard";
+import { supabase } from "./lib/supabaseClient";
+import type { Issue } from "./types/issue";
 import {
   getResidentNotificationIds,
   setResidentNotificationIds,
@@ -41,6 +43,8 @@ export default function App() {
     selectedStatus,
     setSelectedStatus,
     newIssue,
+    updateIssue,
+    deleteIssue,
   } = useIssues();
 
   const [viewMode, setViewMode] = useState<ViewMode>("feed");
@@ -75,7 +79,6 @@ export default function App() {
     );
   }, [newIssue, notificationsEnabled]);
 
-  // Calculate global badge counts against all issues so active filters don't alter stats
   const openCount = allIssues.filter((i) => i.status === "open").length;
   const resolvedCount = allIssues.filter((i) => i.status === "resolved").length;
 
@@ -140,8 +143,28 @@ export default function App() {
     handleAnalyticsDetailClick(issueId);
   }
 
+  // Update handler passed down to IssueFeed
+  const handleUpdateIssue = async (issueId: string, updates: Partial<Issue>) => {
+    try {
+      await updateIssue(issueId, updates);
+    } catch (error) {
+      console.error("Error updating issue:", error);
+      throw error;
+    }
+  };
+
+  // Delete handler passed down to IssueFeed
+  const handleDeleteIssue = async (issueId: string) => {
+    try {
+      await deleteIssue(issueId);
+    } catch (error) {
+      console.error("Failed to delete issue:", error);
+      throw error;
+    }
+  };
+
   const focusedIssue = focusedIssueId
-    ? allIssues.find((issue) => issue.id === focusedIssueId)
+    ? allIssues.find((issue) => String(issue.id) === String(focusedIssueId))
     : null;
   const feedIssues = focusedIssueId
     ? focusedIssue
@@ -151,7 +174,6 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen bg-background text-foreground flex flex-col overflow-hidden">
-      {/* Navbar Header */}
       <Navbar
         onOpenSidebar={() => setSidebarOpen(true)}
         onReportClick={handleStartReporting}
@@ -159,9 +181,7 @@ export default function App() {
         unreadCount={notificationsEnabled ? residentNotificationIds.length : 0}
       />
 
-      {/* Main Body Layout with Sidebar */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Sidebar Drawer / Navigation */}
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
@@ -171,9 +191,7 @@ export default function App() {
           resolvedCount={resolvedCount}
         />
 
-        {/* Viewport Content Area */}
         <main className="flex-1 flex flex-col min-w-0 overflow-y-auto relative">
-          {/* Category & Status Filter Bar */}
           {((viewMode === "feed" && !focusedIssueId) || viewMode === "map") && (
             <div className="p-3 bg-card border-b border-border flex justify-center sticky top-0 z-30 shadow-xs">
               <FilterBar
@@ -185,21 +203,18 @@ export default function App() {
             </div>
           )}
 
-          {/* Error Banner */}
           {error && (
             <div className="bg-destructive/15 text-destructive text-xs p-3 text-center border-b border-destructive/20">
               {error}
             </div>
           )}
 
-          {/* Main Loading & View Routing */}
           {loading ? (
             <div className="flex-1 flex items-center justify-center py-12 text-xs text-muted-foreground">
               Loading ward reports...
             </div>
           ) : (
             <>
-              {/* Feed View */}
               {viewMode === "feed" && (
                 <div className="flex-1 py-4">
                   <IssueFeed
@@ -208,13 +223,14 @@ export default function App() {
                     targetIssueId={focusedIssueId}
                     isFocusedView={Boolean(focusedIssueId)}
                     onShowAllReports={handleShowAllReports}
+                    onUpdateIssue={handleUpdateIssue}
+                    onDeleteIssue={handleDeleteIssue}
                   />
                 </div>
               )}
 
-              {/* Map View */}
               {viewMode === "map" && (
-                <div className="flex-1 w-full relative min-h-[500px]">
+                <div className="flex-1 w-full relative min-h-125">
                   {isSelectingLocation && !pendingPoint && (
                     <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-medium px-4 py-2 rounded-full z-20 shadow-lg border border-primary/20 animate-fade-in flex items-center gap-1.5">
                       <MapPin className="h-4 w-4" />
@@ -227,7 +243,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* Analytics / Stats View */}
               {viewMode === "analytics" && (
                 <div className="flex-1 flex justify-center p-4">
                   <StatsPanel
@@ -237,7 +252,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* Notifications View */}
               {viewMode === "notifications" && (
                 <ResidentNotifications
                   issues={allIssues}
@@ -250,7 +264,6 @@ export default function App() {
                 />
               )}
 
-              {/* About View */}
               {viewMode === "about" && (
                 <div className="max-w-2xl mx-auto p-6 space-y-4">
                   <div className="bg-card border border-border rounded-xl p-6 shadow-xs space-y-3">
@@ -284,7 +297,6 @@ export default function App() {
         </main>
       </div>
 
-      {/* Modal Form Overlay */}
       {pendingPoint && (
         <ReportForm
           lat={pendingPoint.lat}
@@ -295,7 +307,6 @@ export default function App() {
         />
       )}
 
-      {/* Toast Notification */}
       {justSubmitted && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-4 py-2.5 rounded-lg shadow-xl z-50 animate-bounce font-medium">
           Report published to feed successfully!
