@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import type { Issue, IssueCategory, IssueStatus } from "../../../types/issue";
+import { deleteIssue as deleteIssueRecord } from "../lib/deleteIssue";
+import { editIssue } from "../lib/editIssue";
 
 interface UseIssuesOptions {
   realtimeEnabled?: boolean;
@@ -8,12 +10,18 @@ interface UseIssuesOptions {
 
 export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
   const [issues, setIssues] = useState<Issue[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<IssueCategory | "all">("all");
-  const [selectedStatus, setSelectedStatus] = useState<IssueStatus | "all">("all");
+  const [selectedCategory, setSelectedCategory] = useState<
+    IssueCategory | "all"
+  >("all");
+  const [selectedStatus, setSelectedStatus] = useState<IssueStatus | "all">(
+    "all",
+  );
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "live" | "offline">("connecting");
+  const [realtimeStatus, setRealtimeStatus] = useState<
+    "connecting" | "live" | "offline"
+  >("connecting");
   const [realtimeVersion, setRealtimeVersion] = useState<number>(0);
   const [newIssue, setNewIssue] = useState<Issue | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
@@ -31,7 +39,9 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
 
     if (supabaseError) {
       console.error("Error fetching issues:", supabaseError);
-      setError("We could not load infrastructure reports. Please check your connection and try again.");
+      setError(
+        "We could not load infrastructure reports. Please check your connection and try again.",
+      );
     } else if (data) {
       setIssues(data as Issue[]);
       setLastUpdatedAt(new Date().toISOString());
@@ -46,9 +56,12 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
 
   useEffect(() => {
     function handleLocalIssueUpdate(event: Event) {
-      const detail = (event as CustomEvent<{ id: string; status: IssueStatus }>).detail;
+      const detail = (event as CustomEvent<{ id: string; status: IssueStatus }>)
+        .detail;
       setIssues((current) =>
-        current.map((issue) => (issue.id === detail.id ? { ...issue, status: detail.status } : issue))
+        current.map((issue) =>
+          issue.id === detail.id ? { ...issue, status: detail.status } : issue,
+        ),
       );
       setLastUpdatedAt(new Date().toISOString());
       setRealtimeVersion((v) => v + 1);
@@ -59,7 +72,10 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
     if (!realtimeEnabled) {
       setRealtimeStatus("offline");
       return () => {
-        window.removeEventListener("planner-issue-updated", handleLocalIssueUpdate);
+        window.removeEventListener(
+          "planner-issue-updated",
+          handleLocalIssueUpdate,
+        );
       };
     }
 
@@ -76,7 +92,7 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
           setNewIssue(inserted);
           setRealtimeVersion((v) => v + 1);
           setLastUpdatedAt(new Date().toISOString());
-        }
+        },
       )
       .on(
         "postgres_changes",
@@ -93,21 +109,23 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
                 };
               }
               return item;
-            })
+            }),
           );
           setRealtimeVersion((v) => v + 1);
           setLastUpdatedAt(new Date().toISOString());
-        }
+        },
       )
       .on(
         "postgres_changes",
         { event: "DELETE", schema: "public", table: "issues" },
         (payload) => {
           const deleted = payload.old as { id: string };
-          setIssues((current) => current.filter((item) => item.id !== deleted.id));
+          setIssues((current) =>
+            current.filter((item) => item.id !== deleted.id),
+          );
           setRealtimeVersion((v) => v + 1);
           setLastUpdatedAt(new Date().toISOString());
-        }
+        },
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
@@ -122,31 +140,26 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
       });
 
     return () => {
-      window.removeEventListener("planner-issue-updated", handleLocalIssueUpdate);
+      window.removeEventListener(
+        "planner-issue-updated",
+        handleLocalIssueUpdate,
+      );
       supabase.removeChannel(channel);
     };
   }, [realtimeEnabled]);
 
   const updateIssue = async (issueId: string, updates: Partial<Issue>) => {
-    const { error: updateError } = await supabase
-      .from("issues")
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq("id", issueId);
-
-    if (updateError) throw updateError;
+    await editIssue(issueId, updates);
 
     setIssues((current) =>
-      current.map((item) => (item.id === issueId ? { ...item, ...updates } : item))
+      current.map((item) =>
+        item.id === issueId ? { ...item, ...updates } : item,
+      ),
     );
   };
 
   const deleteIssue = async (issueId: string) => {
-    const { error: deleteError } = await supabase
-      .from("issues")
-      .delete()
-      .eq("id", issueId);
-
-    if (deleteError) throw deleteError;
+    await deleteIssueRecord(issueId);
 
     setIssues((current) => current.filter((item) => item.id !== issueId));
   };
@@ -158,8 +171,10 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
   }, []);
 
   const filteredIssues = issues.filter((issue) => {
-    const matchesCategory = selectedCategory === "all" || issue.category === selectedCategory;
-    const matchesStatus = selectedStatus === "all" || issue.status === selectedStatus;
+    const matchesCategory =
+      selectedCategory === "all" || issue.category === selectedCategory;
+    const matchesStatus =
+      selectedStatus === "all" || issue.status === selectedStatus;
     return matchesCategory && matchesStatus;
   });
 

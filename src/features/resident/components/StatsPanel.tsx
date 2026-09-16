@@ -24,6 +24,11 @@ import {
 import type { Issue, IssueCategory } from "../../../types/issue";
 import { CATEGORY_COLORS, CATEGORY_LABELS } from "../../../types/issue";
 import { relativeTime } from "../../../lib/relativeTime";
+import {
+  getCategoryMetrics,
+  getRecentIssues,
+  getStatusMetrics,
+} from "../analytics/analyticsMetrics";
 import { CategoryIcon } from "../../../components/CategoryIcon";
 import {
   Card,
@@ -32,19 +37,6 @@ import {
   CardTitle,
 } from "../../../components/ui/card";
 import { Badge } from "../../../components/ui/badge";
-
-const CATEGORY_ORDER: IssueCategory[] = [
-  "water",
-  "sewage",
-  "waste",
-  "pollution",
-  "road_damage",
-  "encroachment",
-  "other",
-];
-
-const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
-const RECENT_FEED_LIMIT = 8;
 
 interface StatsPanelProps {
   issues: Issue[];
@@ -61,76 +53,23 @@ export default function StatsPanel({
 
   // 24-Hour Activity Calculation
   const last24hCount = useMemo(() => {
-    const cutoff = Date.now() - TWENTY_FOUR_HOURS_MS;
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
     return issues.filter(
       (issue) => new Date(issue.created_at).getTime() >= cutoff,
     ).length;
   }, [issues]);
 
   // Overall Status Metrics
-  const statusMetrics = useMemo(() => {
-    let open = 0;
-    let inProgress = 0;
-    let resolved = 0;
-
-    for (const issue of issues) {
-      if (issue.status === "open") open++;
-      else if (issue.status === "in_progress") inProgress++;
-      else if (
-        issue.status === "resolved" ||
-        (issue.status as string) === "closed"
-      )
-        resolved++;
-    }
-
-    const total = issues.length;
-    const resolutionRate = total > 0 ? Math.round((resolved / total) * 100) : 0;
-
-    return { open, inProgress, resolved, total, resolutionRate };
-  }, [issues]);
+  const statusMetrics = useMemo(() => getStatusMetrics(issues), [issues]);
 
   // Comprehensive Category Analytics Breakdown
-  const categoryAnalytics = useMemo(() => {
-    const totalIssues = issues.length;
-
-    return CATEGORY_ORDER.map((cat) => {
-      const catIssues = issues.filter((i) => i.category === cat);
-      const count = catIssues.length;
-      const open = catIssues.filter((i) => i.status === "open").length;
-      const inProgress = catIssues.filter(
-        (i) => i.status === "in_progress",
-      ).length;
-      const resolved = catIssues.filter(
-        (i) => i.status === "resolved" || (i.status as string) === "closed",
-      ).length;
-
-      const resolutionRate =
-        count > 0 ? Math.round((resolved / count) * 100) : 0;
-      const sharePercentage =
-        totalIssues > 0 ? Math.round((count / totalIssues) * 100) : 0;
-
-      return {
-        category: cat,
-        name: CATEGORY_LABELS[cat],
-        count,
-        open,
-        inProgress,
-        resolved,
-        resolutionRate,
-        sharePercentage,
-        fill: CATEGORY_COLORS[cat],
-      };
-    });
-  }, [issues]);
+  const categoryAnalytics = useMemo(() => getCategoryMetrics(issues), [issues]);
 
   // Filtered Issues for Recent Feed
-  const recentIssues = useMemo(() => {
-    const filtered =
-      selectedCategory === "all"
-        ? issues
-        : issues.filter((i) => i.category === selectedCategory);
-    return filtered.slice(0, RECENT_FEED_LIMIT);
-  }, [issues, selectedCategory]);
+  const recentIssues = useMemo(
+    () => getRecentIssues(issues, selectedCategory),
+    [issues, selectedCategory],
+  );
 
   const handleDetailClick = (issueId: string) => {
     if (onNavigateToFeed) {

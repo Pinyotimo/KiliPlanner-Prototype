@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { OfficialIssue, IssueStatus } from "../types/official";
-import { getAssignedIssues, updateIssueStatus } from "../lib/officialQueries";
+import { getAssignedIssues } from "../lib/officialQueries";
+import { updateOfficialIssueStatus } from "../lib/updateIssueStatus";
 import { IssueStatusCard } from "../components/IssueStatusCard";
 import { supabase } from "../../lib/supabaseClient";
 import NotificationList from "../../components/NotificationList";
@@ -132,7 +133,7 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
     notes: string,
   ) => {
     try {
-      await updateIssueStatus(issueId, status, notes);
+      await updateOfficialIssueStatus(issueId, status, notes);
 
       setIssues((prevIssues) =>
         prevIssues.map((item) =>

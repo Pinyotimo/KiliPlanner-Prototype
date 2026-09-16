@@ -12,6 +12,7 @@ import AdminSettings from "./AdminSettings";
 import { useIssues } from "../../features/resident/hooks/useIssues";
 import { getPlannerSettings } from "../lib/plannerSettings";
 import PlannerLogin from "./PlannerLogin";
+import PageSkeleton from "../../components/PageSkeleton";
 import {
   getPlannerNotificationIds,
   setPlannerNotificationIds,
@@ -120,9 +121,7 @@ function AuthenticatedPlannerConsole({ pathname }: { pathname: string }) {
     ? pathname.slice("/planner/issues/".length)
     : "";
   let page = loading ? (
-    <div className="rounded-xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">
-      Loading planner data...
-    </div>
+    <PageSkeleton variant="planner" />
   ) : error ? (
     <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-12 text-center text-sm text-destructive">
       {error}

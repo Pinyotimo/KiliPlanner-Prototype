@@ -1,30 +1,40 @@
+export interface GeocodeResult {
+  lat: number;
+  lng: number;
+  displayName: string;
+}
+
 /**
- * Reverse-geocodes a lat/lng into a human-readable address using Nominatim
- * (OpenStreetMap's free geocoder — no API key required).
- *
- * Nominatim's usage policy asks for max 1 request/second and a descriptive
- * User-Agent/Referer — fine at hackathon-demo volume, but don't hammer it
- * in a loop.
- *
- * Returns null on any failure so a geocoding hiccup never blocks a report
- * from being submitted — address is a nice-to-have, not a required field.
+ * Forward-geocodes text queries to coordinates, bounded to the Kilimani Ward bounding box.
  */
-export async function reverseGeocode(
-  lat: number,
-  lng: number
-): Promise<string | null> {
+export async function forwardGeocode(query: string): Promise<GeocodeResult[]> {
+  if (!query || query.trim().length < 3) return [];
+
   try {
-    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+    // Bounding box for Kilimani Ward (min_lon, min_lat, max_lon, max_lat)
+    const viewbox = "36.7621,-1.3025,36.8054,-1.2801";
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
+      query + ", Kilimani, Nairobi"
+    )}&viewbox=${viewbox}&bounded=1&limit=5`;
+
     const response = await fetch(url, {
-      headers: { Accept: "application/json" },
+      headers: {
+        "Accept-Language": "en",
+        "User-Agent": "KiliPlanner-CivicApp/1.0 (kiliplan@kilimani.org)",
+      },
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) return [];
 
     const data = await response.json();
-    return typeof data.display_name === "string" ? data.display_name : null;
+
+    return data.map((item: any) => ({
+      lat: parseFloat(item.lat),
+      lng: parseFloat(item.lon),
+      displayName: item.display_name,
+    }));
   } catch (err) {
-    console.warn("Reverse geocoding failed, continuing without address:", err);
-    return null;
+    console.warn("Forward geocoding search failed:", err);
+    return [];
   }
 }
