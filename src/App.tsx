@@ -7,11 +7,12 @@ import FilterBar from "./features/resident/components/FilterBar";
 import IssueFeed from "./features/resident/components/IssueFeed";
 import StatsPanel from "./features/resident/components/StatsPanel";
 import ResidentNotifications from "./features/resident/components/ResidentNotifications";
+import AboutSection from "./features/resident/components/AboutSection";
+import PageSkeleton from "./components/PageSkeleton";
 import { useIssues } from "./features/resident/hooks/useIssues";
-import { Info, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import PlannerConsole from "./admin/pages/PlannerConsole";
 import { OfficialDashboard } from "./officials/pages/OfficialDashboard";
-import { supabase } from "./lib/supabaseClient";
 import type { Issue } from "./types/issue";
 import {
   getResidentNotificationIds,
@@ -45,6 +46,7 @@ export default function App() {
     newIssue,
     updateIssue,
     deleteIssue,
+    refresh,
   } = useIssues();
 
   const [viewMode, setViewMode] = useState<ViewMode>("feed");
@@ -143,8 +145,10 @@ export default function App() {
     handleAnalyticsDetailClick(issueId);
   }
 
-  // Update handler passed down to IssueFeed
-  const handleUpdateIssue = async (issueId: string, updates: Partial<Issue>) => {
+  const handleUpdateIssue = async (
+    issueId: string,
+    updates: Partial<Issue>,
+  ) => {
     try {
       await updateIssue(issueId, updates);
     } catch (error) {
@@ -153,7 +157,6 @@ export default function App() {
     }
   };
 
-  // Delete handler passed down to IssueFeed
   const handleDeleteIssue = async (issueId: string) => {
     try {
       await deleteIssue(issueId);
@@ -210,9 +213,7 @@ export default function App() {
           )}
 
           {loading ? (
-            <div className="flex-1 flex items-center justify-center py-12 text-xs text-muted-foreground">
-              Loading ward reports...
-            </div>
+            <PageSkeleton variant="resident" onRetry={refresh} />
           ) : (
             <>
               {viewMode === "feed" && (
@@ -264,54 +265,27 @@ export default function App() {
                 />
               )}
 
-              {viewMode === "about" && (
-                <div className="max-w-2xl mx-auto p-6 space-y-4">
-                  <div className="bg-card border border-border rounded-xl p-6 shadow-xs space-y-3">
-                    <div className="flex items-center gap-2 text-primary font-bold text-lg">
-                      <Info className="h-5 w-5" />
-                      About Kilimani Ward Civic Platform
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      This platform empowers residents of Kilimani Ward to
-                      report, track, and resolve civic infrastructure
-                      issues—including water disruptions, road damage, sewage
-                      spills, and waste management.
-                    </p>
-                    <div className="border-t border-border/60 pt-3 text-xs space-y-1">
-                      <p className="font-semibold text-foreground">
-                        How to submit a report:
-                      </p>
-                      <ol className="list-decimal list-inside text-muted-foreground space-y-1">
-                        <li>Click "Report Issue" in the navigation header.</li>
-                        <li>Pinpoint the location on the map.</li>
-                        <li>
-                          Select a category, attach evidence, and publish.
-                        </li>
-                      </ol>
-                    </div>
-                  </div>
+              {viewMode === "about" && <AboutSection />}
+
+              {pendingPoint && (
+                <ReportForm
+                  lat={pendingPoint.lat}
+                  lng={pendingPoint.lng}
+                  existingIssues={allIssues}
+                  onClose={handleFormClose}
+                  onSubmitted={handleSubmitted}
+                />
+              )}
+
+              {justSubmitted && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-4 py-2.5 rounded-lg shadow-xl z-50 animate-bounce font-medium">
+                  Report published to feed successfully!
                 </div>
               )}
             </>
           )}
         </main>
       </div>
-
-      {pendingPoint && (
-        <ReportForm
-          lat={pendingPoint.lat}
-          lng={pendingPoint.lng}
-          existingIssues={allIssues}
-          onClose={handleFormClose}
-          onSubmitted={handleSubmitted}
-        />
-      )}
-
-      {justSubmitted && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-4 py-2.5 rounded-lg shadow-xl z-50 animate-bounce font-medium">
-          Report published to feed successfully!
-        </div>
-      )}
     </div>
   );
 }
