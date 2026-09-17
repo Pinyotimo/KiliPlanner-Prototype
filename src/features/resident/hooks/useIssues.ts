@@ -8,28 +8,44 @@ interface UseIssuesOptions {
   realtimeEnabled?: boolean;
 }
 
+const CACHE_KEY = "kiliplanner_issues_cache";
+
 export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<
-    IssueCategory | "all"
-  >("all");
-  const [selectedStatus, setSelectedStatus] = useState<IssueStatus | "all">(
-    "all",
-  );
-  const [loading, setLoading] = useState<boolean>(true);
+  // 1. Initialize state from LocalStorage for instant rendering
+  const [issues, setIssues] = useState<Issue[]>(() => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      console.error("Failed to parse cached issues", e);
+      return [];
+    }
+  });
+
+  const [selectedCategory, setSelectedCategory] = useState<IssueCategory | "all">("all");
+  const [selectedStatus, setSelectedStatus] = useState<IssueStatus | "all">("all");
+  
+  // 2. Only show loading screen if there is no cached data
+  const [loading, setLoading] = useState<boolean>(() => {
+    return !localStorage.getItem(CACHE_KEY);
+  });
   const [error, setError] = useState<string | null>(null);
 
-  const [realtimeStatus, setRealtimeStatus] = useState<
-    "connecting" | "live" | "offline"
-  >("connecting");
+  const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "live" | "offline">("connecting");
   const [realtimeVersion, setRealtimeVersion] = useState<number>(0);
   const [newIssue, setNewIssue] = useState<Issue | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [refreshVersion, setRefreshVersion] = useState<number>(0);
 
+  // 3. Keep cache continuously in sync with any state changes
+  useEffect(() => {
+    if (issues.length > 0) {
+      localStorage.setItem(CACHE_KEY, JSON.stringify(issues));
+    }
+  }, [issues]);
+
   const fetchIssues = useCallback(async () => {
-    setLoading(true);
     setError(null);
 
     const { data, error: supabaseError } = await supabase
@@ -44,10 +60,11 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
       );
     } else if (data) {
       setIssues(data as Issue[]);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(data)); // Force cache update
       setLastUpdatedAt(new Date().toISOString());
     }
 
-    setLoading(false);
+    setLoading(false); // Clear loading state silently
   }, []);
 
   useEffect(() => {
@@ -56,8 +73,7 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
 
   useEffect(() => {
     function handleLocalIssueUpdate(event: Event) {
-      const detail = (event as CustomEvent<{ id: string; status: IssueStatus }>)
-        .detail;
+      const detail = (event as CustomEvent<{ id: string; status: IssueStatus }>).detail;
       setIssues((current) =>
         current.map((issue) =>
           issue.id === detail.id ? { ...issue, status: detail.status } : issue,
@@ -72,10 +88,7 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
     if (!realtimeEnabled) {
       setRealtimeStatus("offline");
       return () => {
-        window.removeEventListener(
-          "planner-issue-updated",
-          handleLocalIssueUpdate,
-        );
+        window.removeEventListener("planner-issue-updated", handleLocalIssueUpdate);
       };
     }
 
@@ -120,9 +133,7 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
         { event: "DELETE", schema: "public", table: "issues" },
         (payload) => {
           const deleted = payload.old as { id: string };
-          setIssues((current) =>
-            current.filter((item) => item.id !== deleted.id),
-          );
+          setIssues((current) => current.filter((item) => item.id !== deleted.id));
           setRealtimeVersion((v) => v + 1);
           setLastUpdatedAt(new Date().toISOString());
         },
@@ -140,27 +151,20 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
       });
 
     return () => {
-      window.removeEventListener(
-        "planner-issue-updated",
-        handleLocalIssueUpdate,
-      );
+      window.removeEventListener("planner-issue-updated", handleLocalIssueUpdate);
       supabase.removeChannel(channel);
     };
   }, [realtimeEnabled]);
 
   const updateIssue = async (issueId: string, updates: Partial<Issue>) => {
     await editIssue(issueId, updates);
-
     setIssues((current) =>
-      current.map((item) =>
-        item.id === issueId ? { ...item, ...updates } : item,
-      ),
+      current.map((item) => (item.id === issueId ? { ...item, ...updates } : item)),
     );
   };
 
   const deleteIssue = async (issueId: string) => {
     await deleteIssueRecord(issueId);
-
     setIssues((current) => current.filter((item) => item.id !== issueId));
   };
 
@@ -171,10 +175,8 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
   }, []);
 
   const filteredIssues = issues.filter((issue) => {
-    const matchesCategory =
-      selectedCategory === "all" || issue.category === selectedCategory;
-    const matchesStatus =
-      selectedStatus === "all" || issue.status === selectedStatus;
+    const matchesCategory = selectedCategory === "all" || issue.category === selectedCategory;
+    const matchesStatus = selectedStatus === "all" || issue.status === selectedStatus;
     return matchesCategory && matchesStatus;
   });
 
@@ -196,5 +198,6 @@ export function useIssues({ realtimeEnabled = true }: UseIssuesOptions = {}) {
     refetch: fetchIssues,
     updateIssue,
     deleteIssue,
+    setIssues,
   };
 }
