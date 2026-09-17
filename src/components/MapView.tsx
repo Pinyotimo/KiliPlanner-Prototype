@@ -8,8 +8,9 @@ import {
   useMapEvents,
   useMap,
 } from "react-leaflet";
+import L from "leaflet";
 import type { LeafletMouseEvent, Marker as LeafletMarker, LatLngBoundsExpression } from "leaflet";
-import { Locate, Loader2, Info, ShieldAlert } from "lucide-react";
+import { Locate, Loader2, Info, ShieldAlert, MapPin, Check, X } from "lucide-react";
 import {
   kilimaniBoundary,
   KILIMANI_CENTER,
@@ -22,6 +23,8 @@ import type { Issue } from "../types/issue";
 import { CATEGORY_LABELS } from "../types/issue";
 import { relativeTime } from "../lib/relativeTime";
 import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { reverseGeocode } from "../lib/reverseGeocode";
 import "leaflet/dist/leaflet.css";
 
 interface MapViewProps {
@@ -31,86 +34,178 @@ interface MapViewProps {
   selectedIssueId?: string;
 }
 
-type LatLngPair = [number, number];
-
 const KILIMANI_BOUNDS: LatLngBoundsExpression = [
   [-1.3050, 36.7700],
   [-1.2750, 36.8100],
 ];
 
-function ClickHandler({
-  onValidClick,
+// 1. Interaction Handler (Now ignores map clicks if a draft pin is already open)
+function InteractionHandler({
+  onMapClick,
+  disabled,
 }: {
-  onValidClick: (lat: number, lng: number) => void;
+  onMapClick: (lat: number, lng: number) => void;
+  disabled: boolean;
 }) {
-  const [rejectedPoint, setRejectedPoint] = useState<LatLngPair | null>(null);
-  const markerRef = useRef<LeafletMarker | null>(null);
-
   useMapEvents({
     click(e: LeafletMouseEvent) {
-      const { lat, lng } = e.latlng;
-
-      if (isInsideKilimani(lat, lng)) {
-        setRejectedPoint(null);
-        onValidClick(lat, lng);
-      } else {
-        setRejectedPoint([lat, lng]);
-      }
+      if (disabled) return; // Prevent background clicks while popup is active
+      onMapClick(e.latlng.lat, e.latlng.lng);
     },
   });
+  return null;
+}
+
+// 2. Draggable Marker with Error Handling and Click Protection
+function DraftMarker({
+  position,
+  onDragEnd,
+  onConfirm,
+  onCancel,
+}: {
+  position: [number, number];
+  onDragEnd: (lat: number, lng: number) => void;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const [address, setAddress] = useState<string>("Detecting street name...");
+  const markerRef = useRef<LeafletMarker | null>(null);
 
   useEffect(() => {
-    if (rejectedPoint && markerRef.current) {
+    let isMounted = true;
+    setAddress("Detecting street name...");
+    
+    reverseGeocode(position[0], position[1])
+      .then((res) => {
+        if (isMounted) {
+          setAddress(res || "Address not found. You can still confirm.");
+        }
+      })
+      .catch((error) => {
+        console.error("Geocoding failed:", error);
+        if (isMounted) {
+          setAddress("Address not found. You can still confirm.");
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [position[0], position[1]]);
+
+  useEffect(() => {
+    if (markerRef.current) {
       markerRef.current.openPopup();
     }
-  }, [rejectedPoint]);
+  }, [position]);
 
-  if (!rejectedPoint) return null;
+  const draftIcon = L.divIcon({
+    className: "bg-transparent border-none",
+    html: `<div class="relative flex items-center justify-center w-8 h-8">
+            <div class="absolute w-6 h-6 bg-primary rounded-full animate-ping opacity-75"></div>
+            <div class="relative w-4 h-4 bg-primary border-2 border-white rounded-full shadow-md"></div>
+           </div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16],
+  });
 
   return (
-    <Marker position={rejectedPoint} ref={markerRef}>
-      <Popup className="custom-popup">
-        <div className="p-1 text-xs text-foreground font-medium">
-          Please pick a location inside Kilimani Ward.
+    <Marker
+      position={position}
+      draggable={true}
+      icon={draftIcon}
+      ref={markerRef}
+      eventHandlers={{
+        dragend: (e) => {
+          const marker = e.target;
+          const pos = marker.getLatLng();
+          if (isInsideKilimani(pos.lat, pos.lng)) {
+            onDragEnd(pos.lat, pos.lng);
+          } else {
+            alert("Please keep the pin inside Kilimani Ward.");
+            onDragEnd(position[0], position[1]);
+          }
+        },
+      }}
+    >
+      <Popup closeButton={false} closeOnClick={false} autoClose={false} className="custom-popup">
+        <div className="p-2 min-w-50 space-y-3">
+          <div className="text-center space-y-1.5">
+            <p className="text-xs font-bold text-foreground flex items-center justify-center gap-1">
+              <MapPin className="h-4 w-4 text-primary" /> Adjust Location
+            </p>
+            <p className="text-[11px] text-muted-foreground font-medium leading-tight">
+              {address}
+            </p>
+            <p className="text-[9px] text-muted-foreground italic bg-muted/50 py-1 rounded">
+              Drag the pulsing pin to fine-tune
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-1/2 h-8 text-xs"
+              onClick={(e) => {
+                e.stopPropagation(); // Stops click from hitting the map
+                onCancel();
+              }}
+            >
+              <X className="h-3 w-3 mr-1" /> Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="w-1/2 h-8 text-xs"
+              onClick={(e) => {
+                e.stopPropagation(); // Stops click from hitting the map
+                onConfirm();
+              }}
+            >
+              <Check className="h-3 w-3 mr-1" /> Confirm
+            </Button>
+          </div>
         </div>
       </Popup>
     </Marker>
   );
 }
 
-function LocationButton() {
+function LocationButton({ onLocationFound }: { onLocationFound: (lat: number, lng: number) => void }) {
   const map = useMap();
   const [locating, setLocating] = useState(false);
 
   function handleLocate() {
     setLocating(true);
-    map.locate({ setView: true, maxZoom: 16 });
+    map.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
   }
 
   useEffect(() => {
-    function onLocationFound(e: any) {
+    function handleLocationFound(e: any) {
       setLocating(false);
-      if (!isInsideKilimani(e.latlng.lat, e.latlng.lng)) {
-        alert("Your current location is outside Kilimani Ward.");
+      if (isInsideKilimani(e.latlng.lat, e.latlng.lng)) {
+        onLocationFound(e.latlng.lat, e.latlng.lng);
+      } else {
+        alert("Your current GPS location is outside Kilimani Ward.");
       }
     }
 
-    function onLocationError(e: any) {
+    function handleLocationError(e: any) {
       setLocating(false);
-      alert("Unable to retrieve your location: " + e.message);
+      alert("Unable to retrieve high-accuracy GPS location: " + e.message);
     }
 
-    map.on("locationfound", onLocationFound);
-    map.on("locationerror", onLocationError);
+    map.on("locationfound", handleLocationFound);
+    map.on("locationerror", handleLocationError);
 
     return () => {
-      map.off("locationfound", onLocationFound);
-      map.off("locationerror", onLocationError);
+      map.off("locationfound", handleLocationFound);
+      map.off("locationerror", handleLocationError);
     };
-  }, [map]);
+  }, [map, onLocationFound]);
 
   return (
-    <div className="leaflet-top leaflet-left !top-20">
+    <div className="leaflet-top leaflet-left top-20!">
       <div className="leaflet-control leaflet-bar border-0 overflow-hidden rounded-md shadow-xs">
         <button
           type="button"
@@ -166,16 +261,33 @@ export default function MapView({
   onIssueSelect,
   selectedIssueId,
 }: MapViewProps) {
+  const [draftLocation, setDraftLocation] = useState<[number, number] | null>(null);
+
+  function handleMapClick(lat: number, lng: number) {
+    if (isInsideKilimani(lat, lng)) {
+      setDraftLocation([lat, lng]);
+    } else {
+      alert("Please pick a location inside Kilimani Ward.");
+    }
+  }
+
+  function handleConfirmDraft() {
+    if (draftLocation) {
+      onValidClick(draftLocation[0], draftLocation[1]);
+      setDraftLocation(null);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3 p-4 rounded-xl border border-border bg-card shadow-sm w-full h-full">
       <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-lg border border-border">
         <Info className="h-4 w-4 text-primary shrink-0" />
         <span>
-          <strong className="text-foreground">Instructions:</strong> Click inside the highlighted ward boundary on the map to report an issue or safety alert. Red icons indicate priority security zones.
+          <strong className="text-foreground">Instructions:</strong> Click or tap anywhere inside the highlighted boundary to drop a location pin. Drag the pin to adjust, then confirm to report an issue.
         </span>
       </div>
 
-      <div className="relative w-full h-[450px] rounded-lg border border-border overflow-hidden">
+      <div className="relative w-full h-112.5 rounded-lg border border-border overflow-hidden">
         <MapContainer
           center={KILIMANI_CENTER}
           zoom={KILIMANI_DEFAULT_ZOOM}
@@ -276,10 +388,23 @@ export default function MapView({
             );
           })}
 
-          <ClickHandler onValidClick={onValidClick} />
+          <InteractionHandler 
+            onMapClick={handleMapClick} 
+            disabled={draftLocation !== null} 
+          />
+          
+          {draftLocation && (
+            <DraftMarker
+              position={draftLocation}
+              onDragEnd={(lat, lng) => setDraftLocation([lat, lng])}
+              onConfirm={handleConfirmDraft}
+              onCancel={() => setDraftLocation(null)}
+            />
+          )}
+
           <FocusIssue issue={issues.find((issue) => issue.id === selectedIssueId)} />
           <MapSizeObserver />
-          <LocationButton />
+          <LocationButton onLocationFound={handleMapClick} />
         </MapContainer>
       </div>
     </div>

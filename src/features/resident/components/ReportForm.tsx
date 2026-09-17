@@ -126,14 +126,24 @@ export default function ReportForm({
     let isMounted = true;
     setGeocoding(true);
 
-    reverseGeocode(lat, lng).then((resolvedAddress) => {
-      if (isMounted) {
-        if (resolvedAddress) {
-          setValue("address", resolvedAddress);
+    reverseGeocode(lat, lng)
+      .then((resolvedAddress) => {
+        if (isMounted) {
+          if (resolvedAddress) {
+            setValue("address", resolvedAddress);
+          } else {
+            setValue("address", ""); // Clear if nothing is found
+          }
+          setGeocoding(false);
         }
-        setGeocoding(false);
-      }
-    });
+      })
+      .catch((error) => {
+        console.error("Geocoding failed:", error);
+        if (isMounted) {
+          setValue("address", ""); // Fallback to empty so user can type
+          setGeocoding(false); // Stop the infinite loading spinner
+        }
+      });
 
     return () => {
       isMounted = false;
