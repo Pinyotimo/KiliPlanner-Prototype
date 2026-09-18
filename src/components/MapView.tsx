@@ -51,7 +51,7 @@ const KILIMANI_BOUNDS: LatLngBoundsExpression = [
   [-1.275, 36.81],
 ];
 
-// 1. Interaction Handler (Now ignores map clicks if a draft pin is already open)
+// 1. Interaction Handler (Ignores map clicks if a draft pin is already open)
 function InteractionHandler({
   onMapClick,
   disabled,
@@ -346,95 +346,97 @@ export default function MapView({
             }}
           />
 
-
           {issues
-            .filter((issue) => issue.status !== "resolved" && issue.status !== "closed")
+            .filter(
+              (issue) =>
+                issue.status !== "resolved" && issue.status !== "closed",
+            )
             .map((issue) => {
-            const isSec = issue.is_security_alert || issue.category === "security";
+              const isSec =
+                issue.is_security_alert || issue.category === "security";
 
-          {issues.map((issue) => {
-            const isSec =
-              issue.is_security_alert || issue.category === "security";
+              return (
+                <Marker
+                  key={issue.id}
+                  position={[issue.lat, issue.lng]}
+                  icon={createCategoryDivIcon(issue.category)}
+                  eventHandlers={{
+                    click: () => onIssueSelect?.(issue),
+                  }}
+                >
+                  <Popup className="custom-popup">
+                    <div className="p-1 space-y-2 max-w-xs text-xs text-card-foreground">
+                      {isSec && (
+                        <div className="bg-destructive text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <ShieldAlert className="h-3 w-3" /> SECURITY ALERT
+                          </span>
+                          {issue.unsafe_time && (
+                            <span>{issue.unsafe_time}</span>
+                          )}
+                        </div>
+                      )}
 
-
-            return (
-              <Marker
-                key={issue.id}
-                position={[issue.lat, issue.lng]}
-                icon={createCategoryDivIcon(issue.category)}
-                eventHandlers={{
-                  click: () => onIssueSelect?.(issue),
-                }}
-              >
-                <Popup className="custom-popup">
-                  <div className="p-1 space-y-2 max-w-xs text-xs text-card-foreground">
-                    {isSec && (
-                      <div className="bg-destructive text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded flex items-center justify-between">
-                        <span className="flex items-center gap-1">
-                          <ShieldAlert className="h-3 w-3" /> SECURITY ALERT
-                        </span>
-                        {issue.unsafe_time && <span>{issue.unsafe_time}</span>}
+                      <div className="flex items-center justify-between gap-2">
+                        <Badge
+                          variant="outline"
+                          className="flex items-center gap-1 text-[10px] uppercase font-bold border-border bg-muted/50 text-foreground"
+                        >
+                          <CategoryIcon
+                            category={issue.category}
+                            className="h-3 w-3 text-primary"
+                          />
+                          {CATEGORY_LABELS[issue.category] || issue.category}
+                        </Badge>
+                        <Badge
+                          variant={
+                            issue.status === "resolved"
+                              ? "default"
+                              : "secondary"
+                          }
+                          className="capitalize text-[10px]"
+                        >
+                          {issue.status}
+                        </Badge>
                       </div>
-                    )}
 
-                    <div className="flex items-center justify-between gap-2">
-                      <Badge
-                        variant="outline"
-                        className="flex items-center gap-1 text-[10px] uppercase font-bold border-border bg-muted/50 text-foreground"
-                      >
-                        <CategoryIcon
-                          category={issue.category}
-                          className="h-3 w-3 text-primary"
+                      <p className="font-medium text-foreground text-xs leading-snug">
+                        {issue.description}
+                      </p>
+
+                      {issue.photo_base64 && (
+                        <img
+                          src={issue.photo_base64}
+                          alt="Report attachment"
+                          className="w-full h-28 object-cover rounded-md border border-border bg-muted"
                         />
-                        {CATEGORY_LABELS[issue.category] || issue.category}
-                      </Badge>
-                      <Badge
-                        variant={
-                          issue.status === "resolved" ? "default" : "secondary"
-                        }
-                        className="capitalize text-[10px]"
-                      >
-                        {issue.status}
-                      </Badge>
+                      )}
+
+                      {issue.address && (
+                        <p className="text-muted-foreground text-[11px] flex items-center gap-1">
+                          <span>📍</span> {issue.address}
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between pt-1">
+                        <p className="text-muted-foreground text-[10px]">
+                          {relativeTime(issue.created_at)}
+                        </p>
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                          onClick={() => {
+                            window.location.href = `/planner/issues/${issue.id}`;
+                          }}
+                        >
+                          View Details
+                        </button>
+                      </div>
                     </div>
-
-                    <p className="font-medium text-foreground text-xs leading-snug">
-                      {issue.description}
-                    </p>
-
-                    {issue.photo_base64 && (
-                      <img
-                        src={issue.photo_base64}
-                        alt="Report attachment"
-                        className="w-full h-28 object-cover rounded-md border border-border bg-muted"
-                      />
-                    )}
-
-                    {issue.address && (
-                      <p className="text-muted-foreground text-[11px] flex items-center gap-1">
-                        <span>📍</span> {issue.address}
-                      </p>
-                    )}
-
-                    <div className="flex items-center justify-between pt-1">
-                      <p className="text-muted-foreground text-[10px]">
-                        {relativeTime(issue.created_at)}
-                      </p>
-                      <button
-                        type="button"
-                        className="text-xs font-semibold text-primary hover:underline cursor-pointer"
-                        onClick={() => {
-                          window.location.href = `/planner/issues/${issue.id}`;
-                        }}
-                      >
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
+                  </Popup>
+                </Marker>
+              );
+            })}
 
           <InteractionHandler
             onMapClick={handleMapClick}

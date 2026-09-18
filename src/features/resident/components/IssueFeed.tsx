@@ -110,13 +110,12 @@ const IssueCardItem = memo(
       photo_base64: issue.photo_base64 || null,
     });
 
-
     // Only apply the red security priority styling if the issue is NOT resolved or closed
-    const isSecurity = (issue.is_security_alert || issue.category === "security") 
-      && issue.status !== "resolved" 
-      && issue.status !== "closed";
+    const isSecurity =
+      (issue.is_security_alert || issue.category === "security") &&
+      issue.status !== "resolved" &&
+      issue.status !== "closed";
 
-    const isSecurity = issue.is_security_alert || issue.category === "security";
     const isGreenProject = issue.category === "green_project";
 
     const categoryColor =
@@ -194,9 +193,7 @@ const IssueCardItem = memo(
 
       try {
         await upvoteIssue(issue.id, deviceId);
-        
-        // --- AUTOMATED ESCALATION EMAIL ---
-        // Replace with your actual Formspree URL
+
         const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
         fetch(EMAIL_GATEWAY_URL, {
           method: "POST",
@@ -207,11 +204,12 @@ const IssueCardItem = memo(
             category: issue.category,
             description: issue.description,
             location: issue.address || "Location on map",
-            action_required: "This issue has received a new community endorsement. Please prioritize its resolution.",
+            action_required:
+              "This issue has received a new community endorsement. Please prioritize its resolution.",
           }),
-        }).catch((err) => console.error("Escalation email failed to send", err));
-        // ----------------------------------
-
+        }).catch((err) =>
+          console.error("Escalation email failed to send", err),
+        );
       } catch (err) {
         console.error("Failed to register vote:", err);
         setLocalUpvotes(displayUpvotes);
