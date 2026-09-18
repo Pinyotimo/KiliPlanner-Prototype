@@ -132,6 +132,11 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
     status: IssueStatus,
     notes: string,
   ) => {
+    const issue = issues.find((item) => String(item.id) === String(issueId));
+    if (issue?.category === "green_project") {
+      return;
+    }
+
     try {
       await updateOfficialIssueStatus(issueId, status, notes);
 
