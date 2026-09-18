@@ -1,54 +1,61 @@
 import type { Issue } from "../../../types/issue";
 
 export const WASTE_SLA_HOURS = 48;
-export const WASTE_SLA_MS = WASTE_SLA_HOURS * 60 * 60 * 1000;
 
-export type WasteSlaState = {
+export interface WasteSLAState {
   completed: boolean;
   overdue: boolean;
-  progressPercent: number;
   label: string;
-};
-
-function formatRelativeAge(milliseconds: number): string {
-  const totalMinutes = Math.max(1, Math.ceil(Math.abs(milliseconds) / 60000));
-  const days = Math.floor(totalMinutes / 1440);
-  const hours = Math.floor((totalMinutes % 1440) / 60);
-  const minutes = totalMinutes % 60;
-
-  if (days > 0) return `${days} day${days === 1 ? "" : "s"} ago`;
-  if (hours > 0) return `${hours} hr${hours === 1 ? "" : "s"} ago`;
-  return `${minutes} min${minutes === 1 ? "" : "s"} ago`;
+  progressPercent: number;
 }
 
-export function getWasteSlaState(
-  issue: Issue,
-  now = Date.now(),
-): WasteSlaState | null {
-  if (issue.category !== "waste") return null;
+export function getWasteSlaState(issue: Issue, now: number = Date.now()): WasteSLAState | null {
+  const isWasteCategory =
+    issue.category === "garbage_waste" ||
+    issue.category === "waste" ||
+    issue.category === "garbage";
 
-  const completed = issue.status === "resolved" || issue.status === "closed";
-  const deadline = new Date(issue.created_at).getTime() + WASTE_SLA_MS;
-  if (!Number.isFinite(deadline)) return null;
+  if (!isWasteCategory) {
+    return null;
+  }
+
+  const statusStr = String(issue.status).toLowerCase();
+  const completed = statusStr === "resolved" || statusStr === "closed" || statusStr === "fixed";
+
+  const createdTime = new Date(issue.created_at).getTime();
+  const slaMs = WASTE_SLA_HOURS * 60 * 60 * 1000;
+  const targetTime = createdTime + slaMs;
 
   if (completed) {
     return {
       completed: true,
       overdue: false,
-      progressPercent: 100,
       label: "Resolved within SLA",
+      progressPercent: 100,
     };
   }
 
-  const overdue = now >= deadline;
-  const age = now - new Date(issue.created_at).getTime();
+  const timeRemainingMs = targetTime - now;
+  const overdue = timeRemainingMs <= 0;
+
+  if (overdue) {
+    const overdueHours = Math.floor(Math.abs(timeRemainingMs) / (1000 * 60 * 60));
+    return {
+      completed: false,
+      overdue: true,
+      label: `Overdue by ${overdueHours}h`,
+      progressPercent: 100,
+    };
+  }
+
+  const elapsedTimeMs = Math.max(0, now - createdTime);
+  const progressPercent = Math.min(100, (elapsedTimeMs / slaMs) * 100);
+  const remainingHours = Math.ceil(timeRemainingMs / (1000 * 60 * 60));
+
   return {
     completed: false,
-    overdue,
-    progressPercent: Math.min(
-      100,
-      Math.max(0, ((now - (deadline - WASTE_SLA_MS)) / WASTE_SLA_MS) * 100),
-    ),
-    label: formatRelativeAge(age),
+    overdue: false,
+    label: `${remainingHours}h remaining`,
+    progressPercent,
   };
 }
