@@ -18,7 +18,6 @@ import {
   X,
   Check,
   Camera,
-  Timer,
 } from "lucide-react";
 import type { Issue } from "../../../types/issue";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "../../../types/issue";
@@ -30,7 +29,6 @@ import { sortFeedIssues } from "../lib/feedUtils";
 import { upvoteIssue } from "../lib/upvoteIssue";
 import { CategoryIcon } from "../../../components/CategoryIcon";
 import CommentSection from "./CommentSection";
-import { getWasteSlaState, WASTE_SLA_HOURS } from "../lib/sla";
 
 interface IssueFeedProps {
   issues: Issue[];
@@ -101,7 +99,6 @@ const IssueCardItem = memo(
     const [isEditing, setIsEditing] = useState(false);
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [now, setNow] = useState(() => Date.now());
 
     const [editForm, setEditForm] = useState({
       description: issue.description,
@@ -110,23 +107,15 @@ const IssueCardItem = memo(
       photo_base64: issue.photo_base64 || null,
     });
 
-    // Only apply the red security priority styling if the issue is NOT resolved or closed
     const isSecurity = (issue.is_security_alert || issue.category === "security") 
       && issue.status !== "resolved" 
       && issue.status !== "closed";
+
     const categoryColor =
       CATEGORY_COLORS[issue.category] || "var(--category-other)";
     const displayUpvotes =
       localUpvotes !== null ? localUpvotes : issue.upvotes || 1;
     const statusConfig = getStatusConfig(issue.status);
-    const wasteSla = getWasteSlaState(issue, now);
-    const isWasteOverdue = wasteSla?.overdue === true;
-
-    useEffect(() => {
-      if (!wasteSla || wasteSla.completed) return;
-      const timer = window.setInterval(() => setNow(Date.now()), 60000);
-      return () => window.clearInterval(timer);
-    }, [issue.category, issue.created_at, issue.status, wasteSla?.completed]);
 
     useEffect(() => {
       setEditForm({
@@ -191,8 +180,7 @@ const IssueCardItem = memo(
         await upvoteIssue(issue.id, deviceId);
         
         // --- AUTOMATED ESCALATION EMAIL ---
-        // Replace with your actual Formspree URL
-        const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
+        const EMAIL_GATEWAY_URL = "https://formspree.io/f/YOUR_FORMSPREE_ID";
         fetch(EMAIL_GATEWAY_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -224,6 +212,7 @@ const IssueCardItem = memo(
           category: editForm.category,
           sub_detail: editForm.sub_detail || null,
           photo_base64: editForm.photo_base64,
+          is_security_alert: editForm.category === "security",
         };
 
         if (onUpdate) {
@@ -271,11 +260,9 @@ const IssueCardItem = memo(
         className={`group bg-card rounded-2xl border p-4 sm:p-5 shadow-xs transition-all duration-500 text-card-foreground space-y-4 ${
           isSecurity
             ? "border-destructive/80 bg-destructive/2 dark:bg-destructive/10 ring-1 ring-destructive/20"
-            : isWasteOverdue
-              ? "border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/20"
-              : isTargeted
-                ? "ring-2 ring-primary border-primary shadow-lg scale-[1.01]"
-                : "border-border/80 hover:shadow-md"
+            : isTargeted
+              ? "ring-2 ring-primary border-primary shadow-lg scale-[1.01]"
+              : "border-border/80 hover:shadow-md"
         }`}
       >
         {isSecurity && (
@@ -289,45 +276,6 @@ const IssueCardItem = memo(
                 Unsafe: {issue.unsafe_time}
               </span>
             )}
-          </div>
-        )}
-
-        {wasteSla && (
-          <div
-            className={`space-y-2 rounded-xl border px-3 py-2.5 ${
-              isWasteOverdue
-                ? "border-amber-500/50 bg-amber-500/10 text-amber-950 dark:text-amber-100"
-                : wasteSla.completed
-                  ? "border-primary/30 bg-primary/5"
-                  : "border-border/70 bg-muted/40"
-            }`}
-          >
-            <div className="flex items-center justify-between gap-3 text-[11px] font-semibold">
-              <span className="flex min-w-0 items-center gap-1.5">
-                <Timer className="h-3.5 w-3.5 shrink-0" />
-                <span>Expected Resolution: {WASTE_SLA_HOURS} Hours</span>
-              </span>
-              <span className="shrink-0">{wasteSla.label}</span>
-            </div>
-            <div
-              role="progressbar"
-              aria-label={`Waste resolution SLA: ${wasteSla.label}`}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={Math.round(wasteSla.progressPercent)}
-              className="h-1.5 overflow-hidden rounded-full bg-foreground/10"
-            >
-              <div
-                className={`h-full rounded-full transition-[width] duration-500 ${
-                  isWasteOverdue
-                    ? "bg-amber-600 dark:bg-amber-400"
-                    : wasteSla.completed
-                      ? "bg-primary"
-                      : "bg-accent-foreground"
-                }`}
-                style={{ width: `${wasteSla.progressPercent}%` }}
-              />
-            </div>
           </div>
         )}
 
