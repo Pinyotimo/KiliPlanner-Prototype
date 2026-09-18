@@ -11,6 +11,7 @@ import {
   Loader2,
   ShieldAlert,
   Clock,
+  Sprout,
 } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
 import { reverseGeocode } from "../../../lib/reverseGeocode";
@@ -36,6 +37,7 @@ const CATEGORIES: [IssueCategory, ...IssueCategory[]] = [
   "pollution",
   "road_damage",
   "encroachment",
+  "green_project",
   "other",
 ];
 
@@ -101,24 +103,21 @@ export default function ReportForm({
   const [serverError, setServerError] = useState<string | null>(null);
   const [nearbyDuplicate, setNearbyDuplicate] = useState<Issue | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-  } = useForm<ReportFormValues>({
-    resolver: zodResolver(reportSchema),
-    defaultValues: {
-      category: "security",
-      description: "",
-      subDetail: "",
-      address: "",
-      reporterName: "",
-      reporterEmail: "",
-      photoBase64: null,
-      unsafeTime: "Night (After 7 PM)",
+  const { register, handleSubmit, setValue, watch } = useForm<ReportFormValues>(
+    {
+      resolver: zodResolver(reportSchema),
+      defaultValues: {
+        category: "security",
+        description: "",
+        subDetail: "",
+        address: "",
+        reporterName: "",
+        reporterEmail: "",
+        photoBase64: null,
+        unsafeTime: "Night (After 7 PM)",
+      },
     },
-  });
+  );
 
   const selectedCategory = watch("category");
 
@@ -260,7 +259,9 @@ export default function ReportForm({
         status: "open",
         upvotes: 1,
         is_security_alert: isSecurity,
-        unsafe_time: isSecurity ? data.unsafeTime || "Night (After 7 PM)" : null,
+        unsafe_time: isSecurity
+          ? data.unsafeTime || "Night (After 7 PM)"
+          : null,
         device_id: deviceId,
       })
       .select()
@@ -275,11 +276,11 @@ export default function ReportForm({
       // Save newly created issue ID locally
       if (newIssue) {
         const existingIds: string[] = JSON.parse(
-          localStorage.getItem("kili_my_issue_ids") || "[]"
+          localStorage.getItem("kili_my_issue_ids") || "[]",
         );
         localStorage.setItem(
           "kili_my_issue_ids",
-          JSON.stringify([...existingIds, String(newIssue.id)])
+          JSON.stringify([...existingIds, String(newIssue.id)]),
         );
       }
       onSubmitted();
@@ -397,6 +398,19 @@ export default function ReportForm({
             </div>
           )}
 
+          {selectedCategory === "green_project" && (
+            <div className="space-y-2 rounded-xl border border-[color:var(--category-green)]/30 bg-[color:var(--category-green)]/10 p-3 text-[color:var(--category-green)]">
+              <div className="flex items-center gap-1.5 font-bold">
+                <Sprout className="h-4 w-4" />
+                <span>Community Planning Proposal</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Suggest a positive change for this location, such as planting
+                trees, creating a pocket park, or improving a public space.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <label className="font-semibold text-foreground flex items-center justify-between">
               <span className="flex items-center gap-1.5">
@@ -431,7 +445,9 @@ export default function ReportForm({
               placeholder={
                 selectedCategory === "security"
                   ? "Describe safety hazards (e.g., muggings, poor street lighting, suspicious activity)..."
-                  : "Describe what's happening..."
+                  : selectedCategory === "green_project"
+                    ? "Describe the positive change you want here (e.g., plant trees or create a pocket park)..."
+                    : "Describe what's happening..."
               }
             />
           </div>
