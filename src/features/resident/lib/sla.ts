@@ -10,16 +10,19 @@ export interface WasteSLAState {
 }
 
 export function getWasteSlaState(issue: Issue, now: number = Date.now()): WasteSLAState | null {
+  const categoryStr = issue.category as unknown as string;
   const isWasteCategory =
-    issue.category === "garbage_waste" ||
-    issue.category === "waste" ||
-    issue.category === "garbage";
+    categoryStr === "garbage_waste" ||
+    categoryStr === "waste" ||
+    categoryStr === "garbage" ||
+    categoryStr === "sewage" ||
+    categoryStr === "pollution";
 
   if (!isWasteCategory) {
     return null;
   }
 
-  const statusStr = String(issue.status).toLowerCase();
+  const statusStr = (issue.status as unknown as string)?.toLowerCase();
   const completed = statusStr === "resolved" || statusStr === "closed" || statusStr === "fixed";
 
   const createdTime = new Date(issue.created_at).getTime();
