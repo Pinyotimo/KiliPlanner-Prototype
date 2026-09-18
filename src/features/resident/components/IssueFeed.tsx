@@ -17,11 +17,8 @@ import {
   X,
   Check,
   Camera,
-
   BadgeCheck,
-
   Timer,
-
 } from "lucide-react";
 import type { Issue } from "../../../types/issue";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "../../../types/issue";
@@ -117,8 +114,7 @@ const IssueCardItem = memo(
 
     const isSecurity =
       (issue.is_security_alert || issue.category === "security") &&
-      issue.status !== "resolved" &&
-      issue.status !== "closed";
+      issue.status !== "RESOLVED";
 
     const isGreenProject = issue.category === "green_project";
 
@@ -186,10 +182,8 @@ const IssueCardItem = memo(
       setLocalUpvotes(newUpvotes);
 
       try {
-
         await upvoteIssue(issue.id);
 
-        await upvoteIssue(issue.id, deviceId);
         const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
         fetch(EMAIL_GATEWAY_URL, {
           method: "POST",

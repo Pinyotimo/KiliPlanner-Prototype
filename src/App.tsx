@@ -151,13 +151,13 @@ export default function App() {
     setIsSelectingLocation(false);
   }
 
-  function handleSubmitted(reportId: string) {
+  function handleSubmitted(reportId?: string) {
     setPendingPoint(null);
     setIsSelectingLocation(false);
     setFocusedIssueId(null);
     setViewMode("feed");
     setJustSubmitted(true);
-    setSubmittedReportId(reportId);
+    setSubmittedReportId(reportId ?? null);
     setTimeout(() => setJustSubmitted(false), 4000);
   }
 
