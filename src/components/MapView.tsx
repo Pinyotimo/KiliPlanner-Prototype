@@ -418,7 +418,7 @@ export default function MapView({
                         </p>
                       )}
 
-                      <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center justify-between pt-1">
                         <p className="text-muted-foreground text-[10px]">
                           {relativeTime(issue.created_at)}
                         </p>
@@ -426,10 +426,11 @@ export default function MapView({
                           type="button"
                           className="text-xs font-semibold text-primary hover:underline cursor-pointer"
                           onClick={() => {
-                            window.location.href = `/planner/issues/${issue.id}`;
+                            // This focuses the issue in the main community feed using URL params
+                            window.location.search = `?issue=${issue.id}`;
                           }}
                         >
-                          View Details
+                          View in Feed & Endorse
                         </button>
                       </div>
                     </div>
