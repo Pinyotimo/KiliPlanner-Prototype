@@ -8,6 +8,7 @@ export const CATEGORY_ORDER: IssueCategory[] = [
   "pollution",
   "road_damage",
   "encroachment",
+  "green_project",
   "other",
 ];
 

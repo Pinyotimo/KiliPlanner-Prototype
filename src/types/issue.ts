@@ -6,6 +6,7 @@ export type IssueCategory =
   | "pollution"
   | "road_damage"
   | "encroachment"
+  | "green_project"
   | "other";
 
 export type IssueStatus = "open" | "in_progress" | "resolved" | "closed";
@@ -42,6 +43,7 @@ export const CATEGORY_LABELS: Record<IssueCategory, string> = {
   pollution: "Environmental Pollution",
   road_damage: "Road Damage",
   encroachment: "Encroachment on Infrastructure",
+  green_project: "Green Pin: Propose a Project",
   other: "Other",
 };
 
@@ -53,6 +55,7 @@ export const CATEGORY_COLORS: Record<IssueCategory, string> = {
   pollution: "var(--category-pollution)",
   road_damage: "var(--category-road)",
   encroachment: "var(--category-encroachment)",
+  green_project: "var(--category-green)",
   other: "var(--category-other)",
 };
 
