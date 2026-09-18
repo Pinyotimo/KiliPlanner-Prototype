@@ -9,6 +9,7 @@ export type IssueCategory =
   | "land_planning"
   | "drainage"
   | "encroachment"
+  | "green_project"
   | "other";
 
 export type IssueStatus = "UNVERIFIED" | "UNDER_REVIEW" | "CORROBORATED" | "REJECTED" | "VERIFIED" | "RESOLVED";
@@ -49,6 +50,7 @@ export const CATEGORY_LABELS: Record<IssueCategory, string> = {
   land_planning: "Land/Planning",
   drainage: "Drainage",
   encroachment: "Encroachment on Infrastructure",
+  green_project: "Green Pin: Propose a Project",
   other: "Other",
 };
 
@@ -63,6 +65,7 @@ export const CATEGORY_COLORS: Record<IssueCategory, string> = {
   land_planning: "var(--category-encroachment)",
   drainage: "var(--category-water)",
   encroachment: "var(--category-encroachment)",
+  green_project: "var(--category-green)",
   other: "var(--category-other)",
 };
 

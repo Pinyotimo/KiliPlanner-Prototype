@@ -11,6 +11,7 @@ export const CATEGORY_ORDER: IssueCategory[] = [
   "land_planning",
   "drainage",
   "encroachment",
+  "green_project",
   "other",
 ];
 

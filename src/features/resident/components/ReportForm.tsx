@@ -11,6 +11,7 @@ import {
   Loader2,
   ShieldAlert,
   Clock,
+  Sprout,
 } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
 import { reverseGeocode } from "../../../lib/reverseGeocode";
@@ -39,6 +40,7 @@ const CATEGORIES: [IssueCategory, ...IssueCategory[]] = [
   "land_planning",
   "drainage",
   "encroachment",
+  "green_project",
   "other",
 ];
 
@@ -92,6 +94,36 @@ function getDistanceInMeters(
   return R * c;
 }
 
+// ------------------------------------------------------------------
+// AUTOMATED EMAIL DISPATCHER (Hackathon Implementation)
+// ------------------------------------------------------------------
+async function dispatchEmailToAuthority(issueData: any, lat: number, lng: number) {
+  // Replace this URL with your Formspree endpoint (see instructions below)
+  const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
+
+  try {
+    await fetch(EMAIL_GATEWAY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subject: `🚨 KiliPlanner Alert: New ${issueData.category.toUpperCase()} Report`,
+        category: issueData.category,
+        urgency: issueData.is_security_alert ? "HIGH - Security Risk" : "Standard",
+        description: issueData.description,
+        location_details: issueData.address || "Address not provided",
+        exact_coordinates: `${lat}, ${lng}`,
+        google_maps_link: `https://maps.google.com/?q=${lat},${lng}`,
+        reporter: issueData.reporter_name || "Anonymous Resident",
+        action_required: "Please log into the KiliPlanner Official Dashboard to acknowledge and update the status of this ticket.",
+      }),
+    });
+    console.log("Automated dispatch email sent to authorities.");
+  } catch (error) {
+    console.error("Failed to send automated email:", error);
+  }
+}
+// ------------------------------------------------------------------
+
 export default function ReportForm({
   lat,
   lng,
@@ -113,6 +145,7 @@ export default function ReportForm({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
 
+<<<<<<< HEAD
   const {
     register,
     handleSubmit,
@@ -130,8 +163,23 @@ export default function ReportForm({
       reporterEmail: "",
       photoBase64: null,
       unsafeTime: "Night (After 7 PM)",
+=======
+  const { register, handleSubmit, setValue, watch } = useForm<ReportFormValues>(
+    {
+      resolver: zodResolver(reportSchema),
+      defaultValues: {
+        category: "security",
+        description: "",
+        subDetail: "",
+        address: "",
+        reporterName: "",
+        reporterEmail: "",
+        photoBase64: null,
+        unsafeTime: "Night (After 7 PM)",
+      },
+>>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
     },
-  });
+  );
 
   const selectedCategory = watch("category");
   const requiresLivePhoto = ["security", "sewage", "waste", "construction", "land_planning", "drainage", "encroachment"].includes(selectedCategory);
@@ -285,7 +333,7 @@ export default function ReportForm({
           if (resolvedAddress) {
             setValue("address", resolvedAddress);
           } else {
-            setValue("address", ""); // Clear if nothing is found
+            setValue("address", "");
           }
           setGeocoding(false);
         }
@@ -293,8 +341,8 @@ export default function ReportForm({
       .catch((error) => {
         console.error("Geocoding failed:", error);
         if (isMounted) {
-          setValue("address", ""); // Fallback to empty so user can type
-          setGeocoding(false); // Stop the infinite loading spinner
+          setValue("address", "");
+          setGeocoding(false); 
         }
       });
 
@@ -372,13 +420,34 @@ export default function ReportForm({
       body: { issueId: nearbyDuplicate.id },
     });
 
-    setSubmitting(false);
-
     if (error) {
       console.error("Supabase upvote error:", error);
       setServerError("Failed to endorse existing issue.");
+      setSubmitting(false);
     } else {
+<<<<<<< HEAD
       onSubmitted(String(nearbyDuplicate.id));
+=======
+      // --- AUTOMATED ESCALATION EMAIL ---
+      // Replace with your actual Formspree URL
+      const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
+      fetch(EMAIL_GATEWAY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: `⚠️ Escalation: ${nearbyDuplicate.category.toUpperCase()} Issue Gaining Traction`,
+          total_endorsements: newUpvoteCount,
+          category: nearbyDuplicate.category,
+          description: nearbyDuplicate.description,
+          location: nearbyDuplicate.address || `${nearbyDuplicate.lat}, ${nearbyDuplicate.lng}`,
+          action_required: "A resident attempted to report a duplicate issue and endorsed this instead. Please review.",
+        }),
+      }).catch((err) => console.error("Escalation email failed to send", err));
+      // ----------------------------------
+      
+      setSubmitting(false);
+      onSubmitted();
+>>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
     }
   }
 
@@ -386,6 +455,7 @@ export default function ReportForm({
     setSubmitting(true);
     setServerError(null);
 
+<<<<<<< HEAD
     if (!residentLocation) {
       setSubmitting(false);
       setServerError("Verify your current location before submitting.");
@@ -414,24 +484,79 @@ export default function ReportForm({
         userLocationTimestamp: new Date(residentLocation.timestamp).toISOString(),
       },
     });
+=======
+    const isSecurity = data.category === "security";
 
-    setSubmitting(false);
+    let deviceId = localStorage.getItem("kili_device_id");
+    if (!deviceId) {
+      deviceId = crypto.randomUUID();
+      localStorage.setItem("kili_device_id", deviceId);
+    }
+
+    // 1. Prepare data for database
+    const insertData = {
+      category: data.category,
+      description: data.description.trim(),
+      sub_detail: data.subDetail?.trim() || null,
+      lat,
+      lng,
+      address: data.address?.trim() || null,
+      reporter_name: data.reporterName?.trim() || null,
+      reporter_email: data.reporterEmail?.trim() || null,
+      photo_base64: data.photoBase64 || null,
+      status: "open",
+      upvotes: 1,
+      is_security_alert: isSecurity,
+      unsafe_time: isSecurity ? data.unsafeTime || "Night (After 7 PM)" : null,
+      device_id: deviceId,
+    };
+
+    // 2. Save to Supabase
+    const { data: newIssue, error } = await supabase
+      .from("issues")
+      .insert(insertData)
+      .select()
+      .single();
+>>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
 
     if (error) {
+<<<<<<< HEAD
       console.error("Trusted report submission error:", error);
       setServerError(error.message || "Report submission failed.");
     } else {
       // Save newly created issue ID locally
       if (submission?.report?.id) {
+=======
+      console.error("Supabase insert error:", error);
+      setServerError(error.message);
+      setSubmitting(false);
+    } else {
+      // 3. Save ownership locally
+      if (newIssue) {
+>>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
         const existingIds: string[] = JSON.parse(
-          localStorage.getItem("kili_my_issue_ids") || "[]"
+          localStorage.getItem("kili_my_issue_ids") || "[]",
         );
         localStorage.setItem(
           "kili_my_issue_ids",
+<<<<<<< HEAD
           JSON.stringify([...existingIds, String(submission.report.id)])
+=======
+          JSON.stringify([...existingIds, String(newIssue.id)]),
+>>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
         );
+        
+        // 4. Fire the automated email to authorities in the background
+        // (We don't await this because we want the UI to close instantly for the user)
+        dispatchEmailToAuthority(insertData, lat, lng);
       }
+<<<<<<< HEAD
       onSubmitted(String(submission?.report?.id || ""));
+=======
+      
+      setSubmitting(false);
+      onSubmitted();
+>>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
     }
   }
 
@@ -554,7 +679,24 @@ export default function ReportForm({
             </div>
           )}
 
+<<<<<<< HEAD
           {step === 2 && <div className="space-y-1.5">
+=======
+          {selectedCategory === "green_project" && (
+            <div className="space-y-2 rounded-xl border border-(--category-green)/30 bg-(--category-green)/10 p-3 text-(--category-green)">
+              <div className="flex items-center gap-1.5 font-bold">
+                <Sprout className="h-4 w-4" />
+                <span>Community Planning Proposal</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Suggest a positive change for this location, such as planting
+                trees, creating a pocket park, or improving a public space.
+              </p>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+>>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
             <label className="font-semibold text-foreground flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <MapPin className="h-4 w-4 text-primary" />
@@ -588,7 +730,9 @@ export default function ReportForm({
               placeholder={
                 selectedCategory === "security"
                   ? "Describe safety hazards (e.g., muggings, poor street lighting, suspicious activity)..."
-                  : "Describe what's happening..."
+                  : selectedCategory === "green_project"
+                    ? "Describe the positive change you want here (e.g., plant trees or create a pocket park)..."
+                    : "Describe what's happening..."
               }
             />
           </div>}

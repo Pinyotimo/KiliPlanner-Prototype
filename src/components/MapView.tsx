@@ -9,8 +9,20 @@ import {
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
-import type { LeafletMouseEvent, Marker as LeafletMarker, LatLngBoundsExpression } from "leaflet";
-import { Locate, Loader2, Info, ShieldAlert, MapPin, Check, X } from "lucide-react";
+import type {
+  LeafletMouseEvent,
+  Marker as LeafletMarker,
+  LatLngBoundsExpression,
+} from "leaflet";
+import {
+  Locate,
+  Loader2,
+  Info,
+  ShieldAlert,
+  MapPin,
+  Check,
+  X,
+} from "lucide-react";
 import {
   kilimaniBoundary,
   KILIMANI_CENTER,
@@ -35,11 +47,11 @@ interface MapViewProps {
 }
 
 const KILIMANI_BOUNDS: LatLngBoundsExpression = [
-  [-1.3050, 36.7700],
-  [-1.2750, 36.8100],
+  [-1.305, 36.77],
+  [-1.275, 36.81],
 ];
 
-// 1. Interaction Handler (Now ignores map clicks if a draft pin is already open)
+// 1. Interaction Handler (Ignores map clicks if a draft pin is already open)
 function InteractionHandler({
   onMapClick,
   disabled,
@@ -74,7 +86,7 @@ function DraftMarker({
   useEffect(() => {
     let isMounted = true;
     setAddress("Detecting street name...");
-    
+
     reverseGeocode(position[0], position[1])
       .then((res) => {
         if (isMounted) {
@@ -103,7 +115,7 @@ function DraftMarker({
     className: "bg-transparent border-none",
     html: `<div class="relative flex items-center justify-center w-8 h-8">
             <div class="absolute w-6 h-6 bg-primary rounded-full animate-ping opacity-75"></div>
-            <div class="relative w-4 h-4 bg-primary border-2 border-white rounded-full shadow-md"></div>
+            <div class="relative w-4 h-4 bg-primary border-2 border-primary-foreground rounded-full shadow-md"></div>
            </div>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
@@ -129,7 +141,12 @@ function DraftMarker({
         },
       }}
     >
-      <Popup closeButton={false} closeOnClick={false} autoClose={false} className="custom-popup">
+      <Popup
+        closeButton={false}
+        closeOnClick={false}
+        autoClose={false}
+        className="custom-popup"
+      >
         <div className="p-2 min-w-50 space-y-3">
           <div className="text-center space-y-1.5">
             <p className="text-xs font-bold text-foreground flex items-center justify-center gap-1">
@@ -171,13 +188,23 @@ function DraftMarker({
   );
 }
 
-function LocationButton({ onLocationFound }: { onLocationFound: (lat: number, lng: number) => void }) {
+function LocationButton({
+  onLocationFound,
+}: {
+  onLocationFound: (lat: number, lng: number) => void;
+}) {
   const map = useMap();
   const [locating, setLocating] = useState(false);
 
   function handleLocate() {
     setLocating(true);
-    map.locate({ setView: true, maxZoom: 16, enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    map.locate({
+      setView: true,
+      maxZoom: 16,
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    });
   }
 
   useEffect(() => {
@@ -229,7 +256,9 @@ function FocusIssue({ issue }: { issue?: Issue }) {
   const map = useMap();
   useEffect(() => {
     if (issue) {
-      map.setView([issue.lat, issue.lng], Math.max(map.getZoom(), 16), { animate: true });
+      map.setView([issue.lat, issue.lng], Math.max(map.getZoom(), 16), {
+        animate: true,
+      });
     }
   }, [issue, map]);
   return null;
@@ -244,7 +273,9 @@ function MapSizeObserver() {
       map.invalidateSize({ animate: false });
     });
     resizeObserver.observe(container);
-    const frame = window.requestAnimationFrame(() => map.invalidateSize({ animate: false }));
+    const frame = window.requestAnimationFrame(() =>
+      map.invalidateSize({ animate: false }),
+    );
 
     return () => {
       window.cancelAnimationFrame(frame);
@@ -261,7 +292,9 @@ export default function MapView({
   onIssueSelect,
   selectedIssueId,
 }: MapViewProps) {
-  const [draftLocation, setDraftLocation] = useState<[number, number] | null>(null);
+  const [draftLocation, setDraftLocation] = useState<[number, number] | null>(
+    null,
+  );
 
   function handleMapClick(lat: number, lng: number) {
     if (isInsideKilimani(lat, lng)) {
@@ -283,7 +316,9 @@ export default function MapView({
       <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-lg border border-border">
         <Info className="h-4 w-4 text-primary shrink-0" />
         <span>
-          <strong className="text-foreground">Instructions:</strong> Click or tap anywhere inside the highlighted boundary to drop a location pin. Drag the pin to adjust, then confirm to report an issue.
+          <strong className="text-foreground">Instructions:</strong> Click or
+          tap anywhere inside the highlighted boundary to drop a location pin.
+          Drag the pin to adjust, then confirm to report an issue.
         </span>
       </div>
 
@@ -311,9 +346,16 @@ export default function MapView({
             }}
           />
 
-          {issues.map((issue) => {
-            const isSec = issue.is_security_alert || issue.category === "security";
+          {issues
+            .filter(
+              (issue) =>
+                issue.status !== "resolved" && issue.status !== "closed",
+            )
+            .map((issue) => {
+              const isSec =
+                issue.is_security_alert || issue.category === "security";
 
+<<<<<<< HEAD
             return (
               <Marker
                 key={issue.id}
@@ -331,9 +373,54 @@ export default function MapView({
                           <ShieldAlert className="h-3 w-3" /> SECURITY ALERT
                         </span>
                         {issue.unsafe_time && <span>{issue.unsafe_time}</span>}
-                      </div>
-                    )}
+=======
+              return (
+                <Marker
+                  key={issue.id}
+                  position={[issue.lat, issue.lng]}
+                  icon={createCategoryDivIcon(issue.category)}
+                  eventHandlers={{
+                    click: () => onIssueSelect?.(issue),
+                  }}
+                >
+                  <Popup className="custom-popup">
+                    <div className="p-1 space-y-2 max-w-xs text-xs text-card-foreground">
+                      {isSec && (
+                        <div className="bg-destructive text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded flex items-center justify-between">
+                          <span className="flex items-center gap-1">
+                            <ShieldAlert className="h-3 w-3" /> SECURITY ALERT
+                          </span>
+                          {issue.unsafe_time && (
+                            <span>{issue.unsafe_time}</span>
+                          )}
+                        </div>
+                      )}
 
+                      <div className="flex items-center justify-between gap-2">
+                        <Badge
+                          variant="outline"
+                          className="flex items-center gap-1 text-[10px] uppercase font-bold border-border bg-muted/50 text-foreground"
+                        >
+                          <CategoryIcon
+                            category={issue.category}
+                            className="h-3 w-3 text-primary"
+                          />
+                          {CATEGORY_LABELS[issue.category] || issue.category}
+                        </Badge>
+                        <Badge
+                          variant={
+                            issue.status === "resolved"
+                              ? "default"
+                              : "secondary"
+                          }
+                          className="capitalize text-[10px]"
+                        >
+                          {issue.status}
+                        </Badge>
+>>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
+                      </div>
+
+<<<<<<< HEAD
                     <div className="flex items-center justify-between gap-2">
                       <Badge
                         variant="outline"
@@ -373,34 +460,52 @@ export default function MapView({
                     {issue.address && (
                       <p className="text-muted-foreground text-[11px] flex items-center gap-1">
                         <span>📍</span> {issue.address}
+=======
+                      <p className="font-medium text-foreground text-xs leading-snug">
+                        {issue.description}
+>>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
                       </p>
-                    )}
 
-                    <div className="flex items-center justify-between pt-1">
-                      <p className="text-muted-foreground text-[10px]">
-                        {relativeTime(issue.created_at)}
-                      </p>
-                      <button
-                        type="button"
-                        className="text-xs font-semibold text-primary hover:underline cursor-pointer"
-                        onClick={() => {
-                          window.location.href = `/planner/issues/${issue.id}`;
-                        }}
-                      >
-                        View Details
-                      </button>
+                      {issue.photo_base64 && (
+                        <img
+                          src={issue.photo_base64}
+                          alt="Report attachment"
+                          className="w-full h-28 object-cover rounded-md border border-border bg-muted"
+                        />
+                      )}
+
+                      {issue.address && (
+                        <p className="text-muted-foreground text-[11px] flex items-center gap-1">
+                          <span>📍</span> {issue.address}
+                        </p>
+                      )}
+
+                        <div className="flex items-center justify-between pt-1">
+                        <p className="text-muted-foreground text-[10px]">
+                          {relativeTime(issue.created_at)}
+                        </p>
+                        <button
+                          type="button"
+                          className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                          onClick={() => {
+                            // This focuses the issue in the main community feed using URL params
+                            window.location.search = `?issue=${issue.id}`;
+                          }}
+                        >
+                          View in Feed & Endorse
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
+                  </Popup>
+                </Marker>
+              );
+            })}
 
-          <InteractionHandler 
-            onMapClick={handleMapClick} 
-            disabled={draftLocation !== null} 
+          <InteractionHandler
+            onMapClick={handleMapClick}
+            disabled={draftLocation !== null}
           />
-          
+
           {draftLocation && (
             <DraftMarker
               position={draftLocation}
@@ -410,7 +515,9 @@ export default function MapView({
             />
           )}
 
-          <FocusIssue issue={issues.find((issue) => issue.id === selectedIssueId)} />
+          <FocusIssue
+            issue={issues.find((issue) => issue.id === selectedIssueId)}
+          />
           <MapSizeObserver />
           <LocationButton onLocationFound={handleMapClick} />
         </MapContainer>

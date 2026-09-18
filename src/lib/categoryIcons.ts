@@ -5,6 +5,7 @@ import {
   Wind,
   Construction,
   ShieldAlert,
+  Sprout,
   CircleHelp,
   Navigation as NavigationIcon,
   type LucideIcon,
@@ -22,6 +23,7 @@ export const CATEGORY_ICONS: Record<IssueCategory, LucideIcon> = {
   land_planning: NavigationIcon,
   drainage: Waves,
   encroachment: NavigationIcon,
+  green_project: Sprout,
   other: CircleHelp,
 };
 

@@ -1,18 +1,18 @@
-import { supabase } from '@/lib/supabaseClient';
-import { Issue } from '@/types/issue';
-import { IssueStatus } from '../types/official';
+import { supabase } from "@/lib/supabaseClient";
+import { Issue } from "@/types/issue";
+import { IssueStatus } from "../types/official";
 
 // Fetch issues assigned to a specific official or department
 export async function getAssignedIssues(officialId: string) {
   const { data, error } = await supabase
-    .from('issues')
-    .select('*')
+    .from("issues")
+    .select("*")
     // Temporarily commented out to show all issues for testing:
-    // .eq('assigned_to', officialId) 
-    .order('created_at', { ascending: false });
+    // .eq('assigned_to', officialId)
+    .order("created_at", { ascending: false });
 
   if (error) {
-    console.error('Error fetching assigned issues:', error);
+    console.error("Error fetching assigned issues:", error);
     throw error;
   }
 
@@ -21,19 +21,43 @@ export async function getAssignedIssues(officialId: string) {
 
 // Update status and optional official notes for an issue
 export async function updateIssueStatus(
-  issueId: string | number, 
-  status: IssueStatus | 'open' | 'in_progress' | 'resolved' | 'closed', 
-  officialNotes?: string
+  issueId: string | number,
+  status: IssueStatus | "open" | "in_progress" | "resolved" | "closed",
+  officialNotes?: string,
 ) {
+  const { data: issue, error: issueLookupError } = await supabase
+    .from("issues")
+    .select("category")
+    .eq("id", issueId)
+    .single();
+
+  if (issueLookupError) throw issueLookupError;
+  if (issue?.category === "green_project") {
+    throw new Error(
+      "Green Pin project statuses cannot be changed by officials.",
+    );
+  }
+
   const { data, error } = await supabase
+<<<<<<< HEAD
     .rpc('transition_report_state', {
       target_report_id: issueId,
       next_state: status === 'open' ? 'UNDER_REVIEW' : status.toUpperCase(),
       transition_reason: officialNotes ?? null,
     });
+=======
+    .from("issues")
+    .update({
+      status,
+      official_notes: officialNotes ?? null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", issueId)
+    .select();
+>>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
 
   if (error) {
-    console.error('Error updating issue status:', error.message, error.details);
+    console.error("Error updating issue status:", error.message, error.details);
     throw error;
   }
 
@@ -42,25 +66,29 @@ export async function updateIssueStatus(
 
 // Add an official update comment to the issue
 export async function addOfficialComment(
-  issueId: string | number, 
-  authorId: string, 
-  commentText: string
+  issueId: string | number,
+  authorId: string,
+  commentText: string,
 ) {
   const { data, error } = await supabase
-    .from('comments')
+    .from("comments")
     .insert([
       {
         issue_id: issueId,
         user_id: authorId,
         content: commentText,
         is_official: true,
-        created_at: new Date().toISOString()
-      }
+        created_at: new Date().toISOString(),
+      },
     ])
     .select();
 
   if (error) {
-    console.error('Error adding official comment:', error.message, error.details);
+    console.error(
+      "Error adding official comment:",
+      error.message,
+      error.details,
+    );
     throw error;
   }
 
