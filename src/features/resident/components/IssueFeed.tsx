@@ -107,7 +107,10 @@ const IssueCardItem = memo(
       photo_base64: issue.photo_base64 || null,
     });
 
-    const isSecurity = issue.is_security_alert || issue.category === "security";
+    // Only apply the red security priority styling if the issue is NOT resolved or closed
+    const isSecurity = (issue.is_security_alert || issue.category === "security") 
+      && issue.status !== "resolved" 
+      && issue.status !== "closed";
     const categoryColor =
       CATEGORY_COLORS[issue.category] || "var(--category-other)";
     const displayUpvotes =
@@ -170,10 +173,29 @@ const IssueCardItem = memo(
       }
 
       setUpvoting(true);
-      setLocalUpvotes(displayUpvotes + 1);
+      const newUpvotes = displayUpvotes + 1;
+      setLocalUpvotes(newUpvotes);
 
       try {
         await upvoteIssue(issue.id, deviceId);
+        
+        // --- AUTOMATED ESCALATION EMAIL ---
+        // Replace with your actual Formspree URL
+        const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
+        fetch(EMAIL_GATEWAY_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subject: `⚠️ Escalation: ${CATEGORY_LABELS[issue.category] || issue.category} Issue Gaining Traction`,
+            total_endorsements: newUpvotes,
+            category: issue.category,
+            description: issue.description,
+            location: issue.address || "Location on map",
+            action_required: "This issue has received a new community endorsement. Please prioritize its resolution.",
+          }),
+        }).catch((err) => console.error("Escalation email failed to send", err));
+        // ----------------------------------
+
       } catch (err) {
         console.error("Failed to register vote:", err);
         setLocalUpvotes(displayUpvotes);

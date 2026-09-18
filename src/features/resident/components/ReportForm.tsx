@@ -89,6 +89,36 @@ function getDistanceInMeters(
   return R * c;
 }
 
+// ------------------------------------------------------------------
+// AUTOMATED EMAIL DISPATCHER (Hackathon Implementation)
+// ------------------------------------------------------------------
+async function dispatchEmailToAuthority(issueData: any, lat: number, lng: number) {
+  // Replace this URL with your Formspree endpoint (see instructions below)
+  const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
+
+  try {
+    await fetch(EMAIL_GATEWAY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subject: `🚨 KiliPlanner Alert: New ${issueData.category.toUpperCase()} Report`,
+        category: issueData.category,
+        urgency: issueData.is_security_alert ? "HIGH - Security Risk" : "Standard",
+        description: issueData.description,
+        location_details: issueData.address || "Address not provided",
+        exact_coordinates: `${lat}, ${lng}`,
+        google_maps_link: `https://maps.google.com/?q=${lat},${lng}`,
+        reporter: issueData.reporter_name || "Anonymous Resident",
+        action_required: "Please log into the KiliPlanner Official Dashboard to acknowledge and update the status of this ticket.",
+      }),
+    });
+    console.log("Automated dispatch email sent to authorities.");
+  } catch (error) {
+    console.error("Failed to send automated email:", error);
+  }
+}
+// ------------------------------------------------------------------
+
 export default function ReportForm({
   lat,
   lng,
@@ -132,7 +162,7 @@ export default function ReportForm({
           if (resolvedAddress) {
             setValue("address", resolvedAddress);
           } else {
-            setValue("address", ""); // Clear if nothing is found
+            setValue("address", "");
           }
           setGeocoding(false);
         }
@@ -140,8 +170,8 @@ export default function ReportForm({
       .catch((error) => {
         console.error("Geocoding failed:", error);
         if (isMounted) {
-          setValue("address", ""); // Fallback to empty so user can type
-          setGeocoding(false); // Stop the infinite loading spinner
+          setValue("address", "");
+          setGeocoding(false); 
         }
       });
 
@@ -222,12 +252,29 @@ export default function ReportForm({
       .update({ upvotes: newUpvoteCount })
       .eq("id", nearbyDuplicate.id);
 
-    setSubmitting(false);
-
     if (error) {
       console.error("Supabase upvote error:", error);
       setServerError("Failed to endorse existing issue.");
+      setSubmitting(false);
     } else {
+      // --- AUTOMATED ESCALATION EMAIL ---
+      // Replace with your actual Formspree URL
+      const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
+      fetch(EMAIL_GATEWAY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: `⚠️ Escalation: ${nearbyDuplicate.category.toUpperCase()} Issue Gaining Traction`,
+          total_endorsements: newUpvoteCount,
+          category: nearbyDuplicate.category,
+          description: nearbyDuplicate.description,
+          location: nearbyDuplicate.address || `${nearbyDuplicate.lat}, ${nearbyDuplicate.lng}`,
+          action_required: "A resident attempted to report a duplicate issue and endorsed this instead. Please review.",
+        }),
+      }).catch((err) => console.error("Escalation email failed to send", err));
+      // ----------------------------------
+      
+      setSubmitting(false);
       onSubmitted();
     }
   }
@@ -238,41 +285,43 @@ export default function ReportForm({
 
     const isSecurity = data.category === "security";
 
-    // Get or create unique browser device fingerprint
     let deviceId = localStorage.getItem("kili_device_id");
     if (!deviceId) {
       deviceId = crypto.randomUUID();
       localStorage.setItem("kili_device_id", deviceId);
     }
 
+    // 1. Prepare data for database
+    const insertData = {
+      category: data.category,
+      description: data.description.trim(),
+      sub_detail: data.subDetail?.trim() || null,
+      lat,
+      lng,
+      address: data.address?.trim() || null,
+      reporter_name: data.reporterName?.trim() || null,
+      reporter_email: data.reporterEmail?.trim() || null,
+      photo_base64: data.photoBase64 || null,
+      status: "open",
+      upvotes: 1,
+      is_security_alert: isSecurity,
+      unsafe_time: isSecurity ? data.unsafeTime || "Night (After 7 PM)" : null,
+      device_id: deviceId,
+    };
+
+    // 2. Save to Supabase
     const { data: newIssue, error } = await supabase
       .from("issues")
-      .insert({
-        category: data.category,
-        description: data.description.trim(),
-        sub_detail: data.subDetail?.trim() || null,
-        lat,
-        lng,
-        address: data.address?.trim() || null,
-        reporter_name: data.reporterName?.trim() || null,
-        reporter_email: data.reporterEmail?.trim() || null,
-        photo_base64: data.photoBase64 || null,
-        status: "open",
-        upvotes: 1,
-        is_security_alert: isSecurity,
-        unsafe_time: isSecurity ? data.unsafeTime || "Night (After 7 PM)" : null,
-        device_id: deviceId,
-      })
+      .insert(insertData)
       .select()
       .single();
-
-    setSubmitting(false);
 
     if (error) {
       console.error("Supabase insert error:", error);
       setServerError(error.message);
+      setSubmitting(false);
     } else {
-      // Save newly created issue ID locally
+      // 3. Save ownership locally
       if (newIssue) {
         const existingIds: string[] = JSON.parse(
           localStorage.getItem("kili_my_issue_ids") || "[]"
@@ -281,7 +330,13 @@ export default function ReportForm({
           "kili_my_issue_ids",
           JSON.stringify([...existingIds, String(newIssue.id)])
         );
+        
+        // 4. Fire the automated email to authorities in the background
+        // (We don't await this because we want the UI to close instantly for the user)
+        dispatchEmailToAuthority(insertData, lat, lng);
       }
+      
+      setSubmitting(false);
       onSubmitted();
     }
   }
