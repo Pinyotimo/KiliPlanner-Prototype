@@ -9,7 +9,6 @@ create table if not exists report_categories (
   name text not null unique,
   requires_live_photo boolean not null default false,
   requires_geofence boolean not null default true,
-  requires_verified_resident boolean not null default true,
   requires_admin_review boolean not null default true,
   minimum_corrobation integer not null default 0 check (minimum_corrobation >= 0),
   allowed_radius_meters numeric not null default 50 check (allowed_radius_meters > 0),
@@ -20,26 +19,25 @@ create table if not exists report_categories (
 
 insert into report_categories (
   slug, name, requires_live_photo, requires_geofence,
-  requires_verified_resident, requires_admin_review, minimum_corrobation,
+  requires_admin_review, minimum_corrobation,
   allowed_radius_meters, impact_class
 )
 values
-  ('security', 'Security', true, true, true, true, 1, 50, 'NORMAL'),
-  ('water', 'Water', false, true, true, true, 0, 50, 'NORMAL'),
-  ('sewage', 'Sewage', true, true, true, true, 1, 50, 'NORMAL'),
-  ('waste', 'Waste', true, true, false, true, 1, 50, 'NORMAL'),
-  ('pollution', 'Pollution', false, true, true, true, 0, 50, 'NORMAL'),
-  ('road_damage', 'Road', false, true, true, true, 0, 50, 'NORMAL'),
-  ('construction', 'Construction', true, true, true, true, 1, 50, 'HIGH_IMPACT'),
-  ('land_planning', 'Land/Planning', true, true, true, true, 1, 50, 'HIGH_IMPACT'),
-  ('drainage', 'Drainage', true, true, true, true, 1, 50, 'NORMAL'),
-  ('encroachment', 'Encroachment', true, true, true, true, 1, 50, 'NORMAL'),
-  ('other', 'Other', false, true, true, true, 0, 50, 'NORMAL')
+  ('security', 'Security', true, true, true, 1, 50, 'NORMAL'),
+  ('water', 'Water', false, true, true, 0, 50, 'NORMAL'),
+  ('sewage', 'Sewage', true, true, true, 1, 50, 'NORMAL'),
+  ('waste', 'Waste', true, true, true, 1, 50, 'NORMAL'),
+  ('pollution', 'Pollution', false, true, true, 0, 50, 'NORMAL'),
+  ('road_damage', 'Road', false, true, true, 0, 50, 'NORMAL'),
+  ('construction', 'Construction', true, true, true, 1, 50, 'HIGH_IMPACT'),
+  ('land_planning', 'Land/Planning', true, true, true, 1, 50, 'HIGH_IMPACT'),
+  ('drainage', 'Drainage', true, true, true, 1, 50, 'NORMAL'),
+  ('encroachment', 'Encroachment', true, true, true, 1, 50, 'NORMAL'),
+  ('other', 'Other', false, true, true, 0, 50, 'NORMAL')
 on conflict (slug) do update set
   name = excluded.name,
   requires_live_photo = excluded.requires_live_photo,
   requires_geofence = excluded.requires_geofence,
-  requires_verified_resident = excluded.requires_verified_resident,
   requires_admin_review = excluded.requires_admin_review,
   minimum_corrobation = excluded.minimum_corrobation,
   allowed_radius_meters = excluded.allowed_radius_meters,
@@ -151,27 +149,25 @@ values ('report-evidence', 'report-evidence', false)
 on conflict (id) do nothing;
 
 -- ── Trust and safety identity tables ──────────────────────────────────
--- These tables contain pseudonymous identity data only. Do not add a
--- phone_number column or create public policies for either table.
+-- These tables contain pseudonymous device-risk data only. SMS identity
+-- verification is intentionally disabled for now.
 create table if not exists resident_identities (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references auth.users(id) on delete cascade,
-  phone_hash text not null unique,
-  verification_status text not null default 'pending' check (
-    verification_status in ('pending','verified','suspended','revoked')
-  ),
   created_at timestamptz not null default now(),
-  last_verified_at timestamptz,
   risk_level text not null default 'unknown' check (
     risk_level in ('unknown','low','medium','high','critical')
   ),
   suspended_until timestamptz
 );
 
-create index if not exists idx_resident_identities_status
-  on resident_identities (verification_status);
 create index if not exists idx_resident_identities_risk
   on resident_identities (risk_level);
+
+alter table resident_identities drop column if exists phone_hash;
+alter table resident_identities drop column if exists verification_status;
+alter table resident_identities drop column if exists last_verified_at;
+alter table report_categories drop column if exists requires_verified_resident;
 
 create table if not exists resident_devices (
   id uuid primary key default gen_random_uuid(),
@@ -358,18 +354,7 @@ security definer
 set search_path = public
 as $$
 begin
-  if auth.uid() is not null then
-    new.is_verified_resident := exists (
-      select 1
-      from public.resident_identities resident
-      where resident.user_id = auth.uid()
-        and resident.verification_status = 'verified'
-        and (
-          resident.suspended_until is null
-          or resident.suspended_until <= now()
-        )
-    );
-  end if;
+  new.is_verified_resident := false;
   return new;
 end;
 $$;
