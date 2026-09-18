@@ -17,11 +17,11 @@ import {
   X,
   Check,
   Camera,
-<<<<<<< HEAD
+
   BadgeCheck,
-=======
+
   Timer,
->>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
+
 } from "lucide-react";
 import type { Issue } from "../../../types/issue";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "../../../types/issue";
@@ -186,9 +186,9 @@ const IssueCardItem = memo(
       setLocalUpvotes(newUpvotes);
 
       try {
-<<<<<<< HEAD
+
         await upvoteIssue(issue.id);
-=======
+
         await upvoteIssue(issue.id, deviceId);
         const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
         fetch(EMAIL_GATEWAY_URL, {
@@ -206,7 +206,7 @@ const IssueCardItem = memo(
         }).catch((err) =>
           console.error("Escalation email failed to send", err),
         );
->>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
+
       } catch (err) {
         console.error("Failed to register vote:", err);
         setLocalUpvotes(displayUpvotes);

@@ -71,7 +71,7 @@ interface ReportFormProps {
   lng: number;
   existingIssues?: Issue[];
   onClose: () => void;
-  onSubmitted: (reportId: string) => void;
+  onSubmitted: (reportId?: string) => void;
 }
 
 function getDistanceInMeters(
@@ -94,11 +94,7 @@ function getDistanceInMeters(
   return R * c;
 }
 
-// ------------------------------------------------------------------
-// AUTOMATED EMAIL DISPATCHER (Hackathon Implementation)
-// ------------------------------------------------------------------
 async function dispatchEmailToAuthority(issueData: any, lat: number, lng: number) {
-  // Replace this URL with your Formspree endpoint (see instructions below)
   const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
 
   try {
@@ -122,7 +118,6 @@ async function dispatchEmailToAuthority(issueData: any, lat: number, lng: number
     console.error("Failed to send automated email:", error);
   }
 }
-// ------------------------------------------------------------------
 
 export default function ReportForm({
   lat,
@@ -142,10 +137,10 @@ export default function ReportForm({
   const [step, setStep] = useState(1);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [residentLocation, setResidentLocation] = useState<GeolocationPosition | null>(null);
+  
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
 
-<<<<<<< HEAD
   const {
     register,
     handleSubmit,
@@ -163,26 +158,19 @@ export default function ReportForm({
       reporterEmail: "",
       photoBase64: null,
       unsafeTime: "Night (After 7 PM)",
-=======
-  const { register, handleSubmit, setValue, watch } = useForm<ReportFormValues>(
-    {
-      resolver: zodResolver(reportSchema),
-      defaultValues: {
-        category: "security",
-        description: "",
-        subDetail: "",
-        address: "",
-        reporterName: "",
-        reporterEmail: "",
-        photoBase64: null,
-        unsafeTime: "Night (After 7 PM)",
-      },
->>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
     },
-  );
+  });
 
   const selectedCategory = watch("category");
-  const requiresLivePhoto = ["security", "sewage", "waste", "construction", "land_planning", "drainage", "encroachment"].includes(selectedCategory);
+  const requiresLivePhoto = [
+    "security",
+    "sewage",
+    "waste",
+    "construction",
+    "land_planning",
+    "drainage",
+    "encroachment",
+  ].includes(selectedCategory);
 
   function stopCamera() {
     cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -258,10 +246,13 @@ export default function ReportForm({
   async function verifyCurrentLocation() {
     setServerError(null);
     try {
-      setResidentLocation(await getCurrentLocation());
+      const location = await getCurrentLocation();
+      setResidentLocation(location);
       setStep(5);
     } catch (error) {
-      setServerError(error instanceof Error ? error.message : "Unable to obtain current GPS location.");
+      setServerError(
+        error instanceof Error ? error.message : "Unable to obtain current GPS location."
+      );
     }
   }
 
@@ -278,7 +269,7 @@ export default function ReportForm({
     }
 
     if (step === 2) {
-      const valid = await trigger(["description", "address", "subDetail"]);
+      const valid = await trigger(["description", "address"]);
       if (!valid) {
         setServerError("Complete the issue description before continuing.");
         return;
@@ -330,11 +321,7 @@ export default function ReportForm({
     reverseGeocode(lat, lng)
       .then((resolvedAddress) => {
         if (isMounted) {
-          if (resolvedAddress) {
-            setValue("address", resolvedAddress);
-          } else {
-            setValue("address", "");
-          }
+          setValue("address", resolvedAddress || "");
           setGeocoding(false);
         }
       })
@@ -342,7 +329,7 @@ export default function ReportForm({
         console.error("Geocoding failed:", error);
         if (isMounted) {
           setValue("address", "");
-          setGeocoding(false); 
+          setGeocoding(false);
         }
       });
 
@@ -358,7 +345,7 @@ export default function ReportForm({
     }
 
     const duplicate = existingIssues.find((issue) => {
-      if (!["UNVERIFIED", "UNDER_REVIEW"].includes(issue.status) || issue.category !== selectedCategory)
+      if (!["UNVERIFIED", "UNDER_REVIEW", "open"].includes(issue.status) || issue.category !== selectedCategory)
         return false;
       const distance = getDistanceInMeters(lat, lng, issue.lat, issue.lng);
       return distance <= 50;
@@ -371,6 +358,7 @@ export default function ReportForm({
     const file = e.target.files?.[0];
     if (!file) {
       setValue("photoBase64", null);
+      setCaptureMode(null);
       return;
     }
 
@@ -405,6 +393,7 @@ export default function ReportForm({
 
         const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
         setValue("photoBase64", compressedBase64);
+        setCaptureMode("gallery");
       };
     };
 
@@ -425,29 +414,21 @@ export default function ReportForm({
       setServerError("Failed to endorse existing issue.");
       setSubmitting(false);
     } else {
-<<<<<<< HEAD
-      onSubmitted(String(nearbyDuplicate.id));
-=======
-      // --- AUTOMATED ESCALATION EMAIL ---
-      // Replace with your actual Formspree URL
       const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
       fetch(EMAIL_GATEWAY_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           subject: `⚠️ Escalation: ${nearbyDuplicate.category.toUpperCase()} Issue Gaining Traction`,
-          total_endorsements: newUpvoteCount,
           category: nearbyDuplicate.category,
           description: nearbyDuplicate.description,
           location: nearbyDuplicate.address || `${nearbyDuplicate.lat}, ${nearbyDuplicate.lng}`,
           action_required: "A resident attempted to report a duplicate issue and endorsed this instead. Please review.",
         }),
       }).catch((err) => console.error("Escalation email failed to send", err));
-      // ----------------------------------
-      
+
       setSubmitting(false);
-      onSubmitted();
->>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
+      onSubmitted(String(nearbyDuplicate.id));
     }
   }
 
@@ -455,7 +436,6 @@ export default function ReportForm({
     setSubmitting(true);
     setServerError(null);
 
-<<<<<<< HEAD
     if (!residentLocation) {
       setSubmitting(false);
       setServerError("Verify your current location before submitting.");
@@ -463,28 +443,6 @@ export default function ReportForm({
       return;
     }
 
-    const { data: submission, error } = await supabase.functions.invoke("submit-report", {
-      body: {
-        category: data.category,
-        description: data.description.trim(),
-        sub_detail: data.subDetail?.trim() || null,
-        lat,
-        lng,
-        address: data.address?.trim() || null,
-        evidence: data.photoBase64 || null,
-        evidenceMimeType: data.photoBase64 ? "image/jpeg" : null,
-        evidenceCaptureMode: captureMode,
-        evidenceCapturedAt: capturedAt,
-        evidenceCaptureLatitude: lat,
-        evidenceCaptureLongitude: lng,
-        evidenceLocationAccuracy: null,
-        userLat: residentLocation.coords.latitude,
-        userLng: residentLocation.coords.longitude,
-        userLocationAccuracy: residentLocation.coords.accuracy,
-        userLocationTimestamp: new Date(residentLocation.timestamp).toISOString(),
-      },
-    });
-=======
     const isSecurity = data.category === "security";
 
     let deviceId = localStorage.getItem("kili_device_id");
@@ -493,7 +451,6 @@ export default function ReportForm({
       localStorage.setItem("kili_device_id", deviceId);
     }
 
-    // 1. Prepare data for database
     const insertData = {
       category: data.category,
       description: data.description.trim(),
@@ -511,52 +468,31 @@ export default function ReportForm({
       device_id: deviceId,
     };
 
-    // 2. Save to Supabase
     const { data: newIssue, error } = await supabase
       .from("issues")
       .insert(insertData)
       .select()
       .single();
->>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
 
     if (error) {
-<<<<<<< HEAD
-      console.error("Trusted report submission error:", error);
-      setServerError(error.message || "Report submission failed.");
-    } else {
-      // Save newly created issue ID locally
-      if (submission?.report?.id) {
-=======
       console.error("Supabase insert error:", error);
-      setServerError(error.message);
+      setServerError(error.message || "Report submission failed.");
       setSubmitting(false);
     } else {
-      // 3. Save ownership locally
       if (newIssue) {
->>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
         const existingIds: string[] = JSON.parse(
-          localStorage.getItem("kili_my_issue_ids") || "[]",
+          localStorage.getItem("kili_my_issue_ids") || "[]"
         );
         localStorage.setItem(
           "kili_my_issue_ids",
-<<<<<<< HEAD
-          JSON.stringify([...existingIds, String(submission.report.id)])
-=======
-          JSON.stringify([...existingIds, String(newIssue.id)]),
->>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
+          JSON.stringify([...existingIds, String(newIssue.id)])
         );
-        
-        // 4. Fire the automated email to authorities in the background
-        // (We don't await this because we want the UI to close instantly for the user)
+
         dispatchEmailToAuthority(insertData, lat, lng);
       }
-<<<<<<< HEAD
-      onSubmitted(String(submission?.report?.id || ""));
-=======
-      
+
       setSubmitting(false);
-      onSubmitted();
->>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
+      onSubmitted(String(newIssue?.id || ""));
     }
   }
 
@@ -568,12 +504,15 @@ export default function ReportForm({
             <AlertTriangle className="h-5 w-5 text-primary" />
             Report an Issue or Safety Concern
           </DialogTitle>
-          <div className="grid grid-cols-8 gap-1 pt-3" aria-label="Report submission steps">
-            {Array.from({ length: 8 }, (_, index) => (
-              <div key={index} className={cn("h-1 rounded-full", index + 1 <= step ? "bg-primary" : "bg-muted")} />
+          <div className="grid grid-cols-7 gap-1 pt-3" aria-label="Report submission steps">
+            {Array.from({ length: 7 }, (_, index) => (
+              <div
+                key={index}
+                className={cn("h-1 rounded-full", index + 1 <= step ? "bg-primary" : "bg-muted")}
+              />
             ))}
           </div>
-          <p className="text-[11px] font-semibold text-muted-foreground">Step {step} of 8</p>
+          <p className="text-[11px] font-semibold text-muted-foreground">Step {step} of 7</p>
         </DialogHeader>
 
         {serverError && (
@@ -583,7 +522,7 @@ export default function ReportForm({
         )}
 
         {nearbyDuplicate && (
-          <div className="bg-accent/10 border border-accent/20 p-3 rounded-xl text-accent-foreground dark:text-accent-foreground">
+          <div className="bg-accent/10 border border-accent/20 p-3 rounded-xl text-accent-foreground">
             <p className="font-semibold text-xs mb-1">
               ⚠️ Similar Issue Reported Nearby
             </p>
@@ -597,246 +536,309 @@ export default function ReportForm({
               disabled={submitting}
               className="w-full bg-accent hover:bg-accent text-primary-foreground font-medium py-1.5 h-auto text-xs"
             >
-              {submitting
-                ? "Endorsing..."
-                : "👍 Endorse Existing Report (+1 Upvote)"}
+              {submitting ? "Endorsing..." : "👍 Endorse Existing Report (+1 Upvote)"}
             </Button>
           </div>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-xs">
           {step === 1 && (
-          <div className="space-y-2">
-            <label className="font-semibold text-foreground block">
-              Select Category *
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {CATEGORIES.map((cat) => {
-                const isSelected = selectedCategory === cat;
-                const color = CATEGORY_COLORS[cat];
+            <div className="space-y-2">
+              <label className="font-semibold text-foreground block">
+                Select Category *
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {CATEGORIES.map((cat) => {
+                  const isSelected = selectedCategory === cat;
+                  const color = CATEGORY_COLORS[cat];
 
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() =>
-                      setValue("category", cat, { shouldValidate: true })
-                    }
-                    className={cn(
-                      "flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all cursor-pointer",
-                      isSelected
-                        ? "ring-2 border-transparent shadow-xs"
-                        : "border-border hover:bg-muted/50 text-foreground",
-                    )}
-                    style={{
-                      backgroundColor: isSelected
-                        ? `color-mix(in oklch, ${color} 14%, transparent)`
-                        : undefined,
-                      borderColor: isSelected ? color : undefined,
-                      color: isSelected ? color : undefined,
-                    }}
-                  >
-                    <CategoryIcon category={cat} className="h-4 w-4 shrink-0" />
-                    <span className="font-medium text-xs truncate">
-                      {CATEGORY_LABELS[cat]}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          )}
-
-          {step === 2 && selectedCategory === "security" && (
-            <div className="bg-destructive/10 border border-destructive/30 p-3 rounded-xl space-y-2">
-              <div className="flex items-center gap-1.5 font-bold text-destructive dark:text-destructive">
-                <ShieldAlert className="h-4 w-4" />
-                <span>Security Priority Alert</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                This report will be pinned as high-priority on community feeds
-                and maps to alert residents and local security officers.
-              </p>
-              <div className="space-y-1 pt-1">
-                <label className="font-semibold text-foreground flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5" />
-                  When is this area most unsafe?
-                </label>
-                <select
-                  {...register("unsafeTime")}
-                  className="w-full bg-background border border-border rounded-lg p-2 text-xs text-foreground focus:ring-2 focus:ring-destructive/20"
-                >
-                  <option value="Night (After 7 PM)">Night (After 7 PM)</option>
-                  <option value="Late Night / Midnight">
-                    Late Night / Midnight
-                  </option>
-                  <option value="Early Morning (4 AM - 6 AM)">
-                    Early Morning (4 AM - 6 AM)
-                  </option>
-                  <option value="Always / All Hours">Always / All Hours</option>
-                </select>
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() =>
+                        setValue("category", cat, { shouldValidate: true })
+                      }
+                      className={cn(
+                        "flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all cursor-pointer",
+                        isSelected
+                          ? "ring-2 border-transparent shadow-xs"
+                          : "border-border hover:bg-muted/50 text-foreground"
+                      )}
+                      style={{
+                        backgroundColor: isSelected
+                          ? `color-mix(in oklch, ${color} 14%, transparent)`
+                          : undefined,
+                        borderColor: isSelected ? color : undefined,
+                        color: isSelected ? color : undefined,
+                      }}
+                    >
+                      <CategoryIcon category={cat} className="h-4 w-4 shrink-0" />
+                      <span className="font-medium text-xs truncate">
+                        {CATEGORY_LABELS[cat]}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
 
-<<<<<<< HEAD
-          {step === 2 && <div className="space-y-1.5">
-=======
-          {selectedCategory === "green_project" && (
-            <div className="space-y-2 rounded-xl border border-(--category-green)/30 bg-(--category-green)/10 p-3 text-(--category-green)">
-              <div className="flex items-center gap-1.5 font-bold">
-                <Sprout className="h-4 w-4" />
-                <span>Community Planning Proposal</span>
-              </div>
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
-                Suggest a positive change for this location, such as planting
-                trees, creating a pocket park, or improving a public space.
-              </p>
-            </div>
-          )}
-
-          <div className="space-y-1.5">
->>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
-            <label className="font-semibold text-foreground flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 text-primary" />
-                Detected Location
-              </span>
-              {geocoding && (
-                <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Finding street name...
-                </span>
+          {step === 2 && (
+            <div className="space-y-3">
+              {selectedCategory === "security" && (
+                <div className="bg-destructive/10 border border-destructive/30 p-3 rounded-xl space-y-2">
+                  <div className="flex items-center gap-1.5 font-bold text-destructive">
+                    <ShieldAlert className="h-4 w-4" />
+                    <span>Security Priority Alert</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    This report will be pinned as high-priority on community feeds
+                    and maps to alert residents and local security officers.
+                  </p>
+                  <div className="space-y-1 pt-1">
+                    <label className="font-semibold text-foreground flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      When is this area most unsafe?
+                    </label>
+                    <select
+                      {...register("unsafeTime")}
+                      className="w-full bg-background border border-border rounded-lg p-2 text-xs text-foreground focus:ring-2 focus:ring-destructive/20"
+                    >
+                      <option value="Night (After 7 PM)">Night (After 7 PM)</option>
+                      <option value="Late Night / Midnight">Late Night / Midnight</option>
+                      <option value="Early Morning (4 AM - 6 AM)">
+                        Early Morning (4 AM - 6 AM)
+                      </option>
+                      <option value="Always / All Hours">Always / All Hours</option>
+                    </select>
+                  </div>
+                </div>
               )}
-            </label>
-            <Input
-              type="text"
-              {...register("address")}
-              placeholder={
-                geocoding
-                  ? "Detecting address..."
-                  : "e.g. Near Argwings Kodhek Rd junction"
-              }
-            />
-          </div>}
 
-          {step === 2 && <div className="space-y-1.5">
-            <label className="font-semibold text-foreground block">
-              Description *
-            </label>
-            <Textarea
-              rows={3}
-              {...register("description")}
-              placeholder={
-                selectedCategory === "security"
-                  ? "Describe safety hazards (e.g., muggings, poor street lighting, suspicious activity)..."
-                  : selectedCategory === "green_project"
-                    ? "Describe the positive change you want here (e.g., plant trees or create a pocket park)..."
-                    : "Describe what's happening..."
-              }
-            />
-          </div>}
-
-          {step === 3 && <div className="space-y-1.5">
-            <label className="font-semibold text-foreground block">
-              Specific Detail / Sub-location (Optional)
-            </label>
-            <Input
-              type="text"
-              {...register("subDetail")}
-              placeholder="e.g. Unlit alleyway near gate"
-            />
-            <p className="rounded-lg bg-muted p-3 text-muted-foreground">Your report pin is set at <strong className="text-foreground">{lat.toFixed(5)}, {lng.toFixed(5)}</strong>. This location will be checked against your current GPS before submission.</p>
-          </div>}
-
-          {step === 5 && <div className="space-y-1.5">
-            <label className="font-semibold text-foreground flex items-center gap-1.5">
-              <Camera className="h-4 w-4 text-muted-foreground" />
-              {requiresLivePhoto ? "Capture Live Evidence" : "Attach Photo"}
-            </label>
-            {requiresLivePhoto ? (
-              <div className="space-y-2">
-                {!cameraPreview && !cameraOpen && (
-                  <Button type="button" onClick={() => void openCamera()} className="w-full">
-                    <Camera className="mr-2 h-4 w-4" /> Open Camera
-                  </Button>
-                )}
-                {cameraOpen && (
-                  <div className="space-y-2">
-                    <video ref={videoRef} autoPlay playsInline muted className="aspect-video w-full rounded-lg bg-black object-cover" />
-                    <Button type="button" onClick={capturePhoto} className="w-full">Capture</Button>
+              {selectedCategory === "green_project" && (
+                <div className="space-y-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-emerald-600 dark:text-emerald-400">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <Sprout className="h-4 w-4" />
+                    <span>Community Planning Proposal</span>
                   </div>
-                )}
-                {cameraPreview && (
-                  <div className="space-y-2">
-                    <img src={cameraPreview} alt="Camera preview" className="aspect-video w-full rounded-lg object-cover" />
-                    <div className="flex gap-2">
-                      <Button type="button" variant="outline" onClick={retakePhoto} className="w-1/2">Retake</Button>
-                      <Button type="button" onClick={() => setServerError(null)} className="w-1/2">Confirm</Button>
-                    </div>
-                  </div>
-                )}
-                <p className="text-[11px] text-muted-foreground">Gallery upload is unavailable for this category.</p>
+                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                    Suggest a positive change for this location, such as planting
+                    trees, creating a pocket park, or improving a public space.
+                  </p>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    Detected Location
+                  </span>
+                  {geocoding && (
+                    <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Finding street name...
+                    </span>
+                  )}
+                </label>
+                <Input
+                  type="text"
+                  {...register("address")}
+                  placeholder={
+                    geocoding ? "Detecting address..." : "e.g. Near Argwings Kodhek Rd junction"
+                  }
+                />
               </div>
-            ) : (
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoChange}
-                className="cursor-pointer"
-              />
-            )}
-          </div>}
 
-          {step === 5 && <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1.5">
-              <label className="font-semibold text-foreground flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5 text-muted-foreground" />
-                Your Name
-              </label>
-              <Input
-                type="text"
-                {...register("reporterName")}
-                placeholder="Jane Doe"
-              />
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground block">
+                  Description *
+                </label>
+                <Textarea
+                  rows={3}
+                  {...register("description")}
+                  placeholder={
+                    selectedCategory === "security"
+                      ? "Describe safety hazards (e.g., muggings, poor street lighting, suspicious activity)..."
+                      : selectedCategory === "green_project"
+                      ? "Describe the positive change you want here..."
+                      : "Describe what's happening..."
+                  }
+                />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <label className="font-semibold text-foreground flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                Your Email
-              </label>
-              <Input
-                type="email"
-                {...register("reporterEmail")}
-                placeholder="jane@example.com"
-              />
+          )}
+
+          {step === 3 && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground block">
+                  Specific Detail / Sub-location (Optional)
+                </label>
+                <Input
+                  type="text"
+                  {...register("subDetail")}
+                  placeholder="e.g. Unlit alleyway near gate"
+                />
+              </div>
+              <p className="rounded-lg bg-muted p-3 text-muted-foreground text-[11px]">
+                Your report pin is set at{" "}
+                <strong className="text-foreground">
+                  {lat.toFixed(5)}, {lng.toFixed(5)}
+                </strong>
+                . This location will be checked against your current GPS before submission.
+              </p>
             </div>
-          </div>}
+          )}
 
           {step === 4 && (
             <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
               <MapPin className="h-6 w-6 text-primary" />
-              <h3 className="font-semibold text-foreground">Verify current location</h3>
-              <p className="text-muted-foreground">We use a fresh GPS reading to compare where you are with the report pin. Your coordinates are used for verification, not shown publicly.</p>
-              <Button type="button" onClick={() => void verifyCurrentLocation()} className="w-full">Verify Current Location</Button>
+              <h3 className="font-semibold text-foreground text-sm">Verify Current Location</h3>
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                We use a fresh GPS reading to compare where you are with the report pin. Your coordinates are used for verification, not shown publicly.
+              </p>
+              <Button
+                type="button"
+                onClick={() => void verifyCurrentLocation()}
+                className="w-full mt-2"
+              >
+                {residentLocation ? "Location Verified (Click Next)" : "Verify Current Location"}
+              </Button>
+            </div>
+          )}
+
+          {step === 5 && (
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground flex items-center gap-1.5">
+                  <Camera className="h-4 w-4 text-muted-foreground" />
+                  {requiresLivePhoto ? "Capture Live Evidence" : "Attach Photo"}
+                </label>
+                {requiresLivePhoto ? (
+                  <div className="space-y-2">
+                    {!cameraPreview && !cameraOpen && (
+                      <Button type="button" onClick={() => void openCamera()} className="w-full">
+                        <Camera className="mr-2 h-4 w-4" /> Open Camera
+                      </Button>
+                    )}
+                    {cameraOpen && (
+                      <div className="space-y-2">
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="aspect-video w-full rounded-lg bg-black object-cover"
+                        />
+                        <Button type="button" onClick={capturePhoto} className="w-full">
+                          Capture
+                        </Button>
+                      </div>
+                    )}
+                    {cameraPreview && (
+                      <div className="space-y-2">
+                        <img
+                          src={cameraPreview}
+                          alt="Camera preview"
+                          className="aspect-video w-full rounded-lg object-cover"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={retakePhoto}
+                            className="w-1/2"
+                          >
+                            Retake
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={() => setServerError(null)}
+                            className="w-1/2"
+                          >
+                            Confirm
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-muted-foreground">
+                      Gallery upload is unavailable for this category.
+                    </p>
+                  </div>
+                ) : (
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="cursor-pointer"
+                  />
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground flex items-center gap-1.5">
+                    <User className="h-3.5 w-3.5 text-muted-foreground" />
+                    Your Name
+                  </label>
+                  <Input
+                    type="text"
+                    {...register("reporterName")}
+                    placeholder="Jane Doe"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="font-semibold text-foreground flex items-center gap-1.5">
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                    Your Email
+                  </label>
+                  <Input
+                    type="email"
+                    {...register("reporterEmail")}
+                    placeholder="jane@example.com"
+                  />
+                </div>
+              </div>
             </div>
           )}
 
           {step === 6 && (
             <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
-              <h3 className="font-semibold text-foreground">Privacy notice</h3>
-              <p className="text-muted-foreground">Your identity remains private. Authorized trust and safety systems use verification, location, and evidence metadata to assess the report. The public sees the report and its trust state, not your phone, email, resident ID, or device ID.</p>
-              <label className="flex items-start gap-2 text-foreground"><input type="checkbox" checked={privacyAccepted} onChange={(event) => setPrivacyAccepted(event.target.checked)} className="mt-0.5" /> I understand and agree to submit this report for verification.</label>
+              <h3 className="font-semibold text-foreground text-sm">Privacy Notice</h3>
+              <p className="text-muted-foreground text-[11px] leading-relaxed">
+                Your identity remains private. Authorized trust and safety systems use verification, location, and evidence metadata to assess the report. The public sees the report and its trust state, not your phone, email, resident ID, or device ID.
+              </p>
+              <label className="flex items-start gap-2 text-foreground cursor-pointer pt-2">
+                <input
+                  type="checkbox"
+                  checked={privacyAccepted}
+                  onChange={(event) => setPrivacyAccepted(event.target.checked)}
+                  className="mt-0.5 rounded border-border"
+                />
+                <span className="text-[11px]">
+                  I understand and agree to submit this report for verification.
+                </span>
+              </label>
             </div>
           )}
 
           {step === 7 && (
-            <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
-              <h3 className="font-semibold text-foreground">Review report</h3>
-              <p><strong>Category:</strong> {CATEGORY_LABELS[selectedCategory]}</p>
-              <p><strong>Description:</strong> {watch("description")}</p>
-              <p><strong>Evidence:</strong> {watch("photoBase64") ? "Attached" : "None"}</p>
-              <p><strong>Location:</strong> {lat.toFixed(5)}, {lng.toFixed(5)}</p>
+            <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-4 text-[11px]">
+              <h3 className="font-semibold text-foreground text-sm mb-2">Review Report</h3>
+              <p>
+                <strong>Category:</strong> {CATEGORY_LABELS[selectedCategory]}
+              </p>
+              <p>
+                <strong>Description:</strong> {watch("description")}
+              </p>
+              <p>
+                <strong>Evidence:</strong> {watch("photoBase64") ? "Attached" : "None"}
+              </p>
+              <p>
+                <strong>Location:</strong> {lat.toFixed(5)}, {lng.toFixed(5)}
+              </p>
             </div>
           )}
 
@@ -849,16 +851,34 @@ export default function ReportForm({
             >
               {step === 1 ? "Cancel" : "Back"}
             </Button>
-            {step === 3 ? (
-              <Button type="button" onClick={() => setStep(4)} className="w-1/2">Verify Location</Button>
-            ) : step === 4 ? <div className="w-1/2" /> : step === 6 ? (
-              <Button type="button" disabled={!privacyAccepted} onClick={() => setStep(7)} className="w-1/2">Review Report</Button>
-            ) : step < 5 ? (
-              <Button type="button" onClick={() => void continueToNextStep()} className="w-1/2">Continue</Button>
-            ) : step === 5 ? (
-              <Button type="button" onClick={() => void continueToNextStep()} className="w-1/2">Privacy Notice</Button>
+
+            {step === 7 ? (
+              <Button type="submit" disabled={submitting} className="w-1/2">
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
+                  </>
+                ) : (
+                  "Submit Report"
+                )}
+              </Button>
+            ) : step === 4 ? (
+              <Button
+                type="button"
+                disabled={!residentLocation}
+                onClick={() => setStep(5)}
+                className="w-1/2"
+              >
+                Continue
+              </Button>
             ) : (
-              <Button type={step === 7 ? "submit" : "button"} disabled={submitting} onClick={step === 6 ? () => void continueToNextStep() : undefined} className="w-1/2">{step === 6 ? "Review Report" : submitting ? "Submitting..." : "Submit Report"}</Button>
+              <Button
+                type="button"
+                onClick={() => void continueToNextStep()}
+                className="w-1/2"
+              >
+                {step === 6 ? "Review Report" : "Continue"}
+              </Button>
             )}
           </div>
         </form>

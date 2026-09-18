@@ -48,13 +48,13 @@ on conflict (slug) do update set
 
 create table if not exists issues (
   id uuid primary key default gen_random_uuid(),
-<<<<<<< HEAD
+
   category text not null references report_categories(slug),
-=======
+
   category text not null check (
     category in ('security','water','sewage','waste','pollution','road_damage','encroachment','green_project','other')
   ),
->>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
+
   description text not null check (char_length(description) <= 280),
   status text not null default 'UNVERIFIED' check (status in ('UNVERIFIED','UNDER_REVIEW','CORROBORATED','REJECTED','VERIFIED','RESOLVED')),
   lat double precision not null,

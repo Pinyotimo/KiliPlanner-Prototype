@@ -131,7 +131,9 @@ export default function App() {
     );
   }, [newIssue, notificationsEnabled]);
 
-  const openCount = allIssues.filter((i) => ["UNVERIFIED", "UNDER_REVIEW", "CORROBORATED", "VERIFIED"].includes(i.status)).length;
+  const openCount = allIssues.filter((i) =>
+    ["UNVERIFIED", "UNDER_REVIEW", "CORROBORATED", "VERIFIED"].includes(i.status),
+  ).length;
   const resolvedCount = allIssues.filter((i) => i.status === "RESOLVED").length;
 
   function handleStartReporting() {
@@ -178,17 +180,14 @@ export default function App() {
     setFocusedIssueId(null);
   }
 
-<<<<<<< HEAD
   function dismissSubmissionConfirmation() {
     setSubmittedReportId(null);
     setJustSubmitted(false);
   }
 
-  function handleEnableResidentNotifications() {
-=======
   async function handleEnableResidentNotifications() {
     await requestNotificationPermission();
->>>>>>> a0beaf8851eff69b47c4dbf63327487566691e37
+
     localStorage.setItem(RESIDENT_NOTIFICATIONS_KEY, "true");
     setNotificationsEnabled(true);
   }
@@ -344,12 +343,26 @@ export default function App() {
                     <span className="text-lg text-primary">✓</span>
                     <div className="min-w-0 flex-1 space-y-2">
                       <p className="font-semibold">Report submitted</p>
-                      <p className="text-xs text-muted-foreground">Your report is currently:</p>
-                      <p className="text-sm font-bold text-muted-foreground">UNVERIFIED</p>
-                      <p className="text-xs leading-relaxed text-muted-foreground">Your identity remains private. The report may be corroborated by other verified residents and reviewed by authorized planners.</p>
-                      {submittedReportId && <p className="rounded-md bg-muted px-2 py-1 font-mono text-[11px]">Report ID: {submittedReportId}</p>}
+                      <p className="text-xs text-muted-foreground">
+                        Your report is currently:
+                      </p>
+                      <p className="text-sm font-bold text-muted-foreground">
+                        UNVERIFIED
+                      </p>
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        Your identity remains private. The report may be
+                        corroborated by other verified residents and reviewed
+                        by authorized planners.
+                      </p>
+                      {submittedReportId && (
+                        <p className="rounded-md bg-muted px-2 py-1 font-mono text-[11px]">
+                          Report ID: {submittedReportId}
+                        </p>
+                      )}
                       <div className="space-y-1 border-t border-border pt-2 text-[11px] text-muted-foreground">
-                        <p className="font-semibold text-foreground">Tracking</p>
+                        <p className="font-semibold text-foreground">
+                          Tracking
+                        </p>
                         <p>Submitted</p>
                         <p>Evidence checked</p>
                         <p>Under review</p>
@@ -357,7 +370,14 @@ export default function App() {
                         <p>Verified</p>
                         <p>Resolved</p>
                       </div>
-                      <Button type="button" variant="outline" size="sm" onClick={dismissSubmissionConfirmation}>Close</Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={dismissSubmissionConfirmation}
+                      >
+                        Close
+                      </Button>
                     </div>
                   </div>
                 </div>
