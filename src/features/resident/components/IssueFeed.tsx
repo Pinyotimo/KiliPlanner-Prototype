@@ -251,7 +251,7 @@ const IssueCardItem = memo(
           isSecurity
             ? "border-destructive/80 bg-destructive/2 dark:bg-destructive/10 ring-1 ring-destructive/20"
             : isWasteOverdue
-              ? "border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/20"
+              ? "border-warning/70 bg-warning/5 ring-1 ring-warning/20"
               : isTargeted
                 ? "ring-2 ring-primary border-primary shadow-lg scale-[1.01]"
                 : "border-border/80 hover:shadow-md"
@@ -275,7 +275,7 @@ const IssueCardItem = memo(
           <div
             className={`space-y-2 rounded-xl border px-3 py-2.5 ${
               isWasteOverdue
-                ? "border-amber-500/50 bg-amber-500/10 text-amber-950 dark:text-amber-100"
+                ? "border-warning/50 bg-warning/10 text-warning-foreground"
                 : wasteSla.completed
                   ? "border-primary/30 bg-primary/5"
                   : "border-border/70 bg-muted/40"
@@ -299,7 +299,7 @@ const IssueCardItem = memo(
               <div
                 className={`h-full rounded-full transition-[width] duration-500 ${
                   isWasteOverdue
-                    ? "bg-amber-600 dark:bg-amber-400"
+                    ? "bg-warning"
                     : wasteSla.completed
                       ? "bg-primary"
                       : "bg-accent-foreground"
@@ -477,7 +477,7 @@ const IssueCardItem = memo(
                     onClick={() =>
                       setEditForm({ ...editForm, photo_base64: null })
                     }
-                    className="absolute top-2 right-2 bg-destructive text-white p-1 rounded-full shadow-md hover:bg-destructive/80 cursor-pointer"
+                    className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-1 rounded-full shadow-md hover:bg-destructive/80 cursor-pointer"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>

@@ -79,7 +79,7 @@ function ResidentSkeleton({ onRetry }: { onRetry?: () => void }) {
         <div className="space-y-1.5">
           <Skeleton className="h-6 w-48 rounded-md" />
           <p className="text-xs text-muted-foreground flex items-center gap-1.5 animate-pulse">
-            <span className="h-2 w-2 rounded-full bg-amber-500 animate-ping inline-block" />
+            <span className="h-2 w-2 rounded-full bg-warning animate-ping inline-block" />
             {LOADING_STEPS[statusIdx]}
           </p>
         </div>
@@ -102,7 +102,10 @@ function ResidentSkeleton({ onRetry }: { onRetry?: () => void }) {
       </div>
 
       {/* Interactive Pre-filter Category Tabs */}
-      <InteractiveTopBar activeTab={activeCategory} onTabChange={setActiveCategory} />
+      <InteractiveTopBar
+        activeTab={activeCategory}
+        onTabChange={setActiveCategory}
+      />
 
       {/* Responsive Hoverable Skeleton Cards */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -154,7 +157,11 @@ function PlannerSkeleton() {
   const [activeTab, setActiveTab] = useState("Overview");
 
   return (
-    <div className="space-y-6 p-4 animate-in fade-in-50 duration-300" aria-busy="true" aria-live="polite">
+    <div
+      className="space-y-6 p-4 animate-in fade-in-50 duration-300"
+      aria-busy="true"
+      aria-live="polite"
+    >
       {/* Header controls skeleton */}
       <div className="flex items-center justify-between border-b border-border pb-4">
         <div className="space-y-1.5">
