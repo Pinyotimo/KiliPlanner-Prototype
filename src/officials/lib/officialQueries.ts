@@ -26,21 +26,18 @@ export async function updateIssueStatus(
   officialNotes?: string
 ) {
   const { data, error } = await supabase
-    .from('issues')
-    .update({ 
-      status, 
-      official_notes: officialNotes ?? null,
-      updated_at: new Date().toISOString()
-    })
-    .eq('id', issueId)
-    .select();
+    .rpc('transition_report_state', {
+      target_report_id: issueId,
+      next_state: status === 'open' ? 'UNDER_REVIEW' : status.toUpperCase(),
+      transition_reason: officialNotes ?? null,
+    });
 
   if (error) {
     console.error('Error updating issue status:', error.message, error.details);
     throw error;
   }
 
-  return data ? (data[0] as Issue) : null;
+  return data as Issue | null;
 }
 
 // Add an official update comment to the issue

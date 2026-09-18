@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Issue } from '../../types/issue';
+import type { Issue, IssueStatus } from '../../types/issue';
 import { CATEGORY_LABELS } from '../../types/issue';
 import StatusBadge from '../components/StatusBadge';
 import MapView from '../../components/MapView';
@@ -7,13 +7,13 @@ import { navigateToPlanner } from '../lib/plannerAccess';
 import { updateAdminIssueStatus } from '../lib/adminQueries';
 
 export default function AdminIssueDetails({ issue }: { issue?: Issue }) {
-  const [status, setStatus] = useState(issue?.status ?? "open");
+  const [status, setStatus] = useState<IssueStatus>(issue?.status ?? "UNVERIFIED");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState(false);
 
   useEffect(() => {
-    setStatus(issue?.status ?? "open");
+    setStatus(issue?.status ?? "UNVERIFIED");
     setMessage(null);
     setPhotoError(false);
   }, [issue?.id, issue?.status]);
@@ -56,7 +56,7 @@ export default function AdminIssueDetails({ issue }: { issue?: Issue }) {
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <section className="rounded-xl border border-border bg-card p-6 shadow-sm"><h3 className="text-lg font-semibold text-foreground">Location</h3><p className="mt-2 text-sm text-foreground">{issue.address || 'Address not available'}</p><p className="mt-1 font-mono text-xs text-muted-foreground">{issue.lat}, {issue.lng}</p><div className="mt-4 h-72 overflow-hidden rounded-lg [&_.map-container]:!h-full"><MapView issues={[issue]} onValidClick={() => undefined} /></div><button type="button" onClick={() => navigateToPlanner('/planner/map')} className="mt-4 text-sm font-semibold text-primary hover:text-primary">Open on Map →</button></section>
-        <section className="rounded-xl border border-border bg-card p-6 shadow-sm"><h3 className="text-lg font-semibold text-foreground">Planner Actions</h3><label className="mt-5 block text-sm font-medium text-foreground">Status<select value={status} disabled={saving} onChange={(event) => updateStatus(event.target.value as Issue["status"])} className="mt-2 block w-full rounded-lg border border-input bg-card px-3 py-2 text-sm"><option value="open">Open</option><option value="resolved">Resolved</option></select></label>{message && <p className={`mt-4 text-sm ${message.startsWith('Unable') ? 'text-destructive' : 'text-primary'}`}>{message}</p>}<div className="mt-6 rounded-lg border border-dashed border-input bg-muted p-4 text-sm text-foreground">Severity, assignment, planner notes, and workflow history are not supported by the current database schema.</div></section>
+        <section className="rounded-xl border border-border bg-card p-6 shadow-sm"><h3 className="text-lg font-semibold text-foreground">Planner Actions</h3><label className="mt-5 block text-sm font-medium text-foreground">Status<select value={status} disabled={saving} onChange={(event) => updateStatus(event.target.value as Issue["status"])} className="mt-2 block w-full rounded-lg border border-input bg-card px-3 py-2 text-sm"><option value="UNDER_REVIEW">Under Review</option><option value="CORROBORATED">Corroborated</option><option value="VERIFIED">Verified</option><option value="RESOLVED">Resolved</option><option value="REJECTED">Rejected</option></select></label>{message && <p className={`mt-4 text-sm ${message.startsWith('Unable') ? 'text-destructive' : 'text-primary'}`}>{message}</p>}<div className="mt-6 rounded-lg border border-dashed border-input bg-muted p-4 text-sm text-foreground">State transitions are recorded in the report workflow history.</div></section>
       </div>
 
       <section className="rounded-xl border border-border bg-card p-6 shadow-sm"><h3 className="text-lg font-semibold text-foreground">Photo</h3>{issue.photo_base64 && !photoError ? <a href={issue.photo_base64} target="_blank" rel="noreferrer"><img src={issue.photo_base64} alt="Infrastructure report attachment" onError={() => setPhotoError(true)} className="mt-4 max-h-[28rem] w-full rounded-lg border border-border object-contain" /></a> : <p className="mt-3 text-sm text-muted-foreground">{photoError ? 'The attached image could not be loaded.' : 'No photo attached.'}</p>}</section>

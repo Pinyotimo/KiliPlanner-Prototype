@@ -8,6 +8,7 @@ import IssueFeed from "./features/resident/components/IssueFeed";
 import StatsPanel from "./features/resident/components/StatsPanel";
 import ResidentNotifications from "./features/resident/components/ResidentNotifications";
 import AboutSection from "./features/resident/components/AboutSection";
+import { Button } from "./components/ui/button";
 import PageSkeleton from "./components/PageSkeleton";
 import { useIssues } from "./features/resident/hooks/useIssues";
 import { MapPin } from "lucide-react";
@@ -53,6 +54,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingPoint, setPendingPoint] = useState<PendingPoint | null>(null);
   const [justSubmitted, setJustSubmitted] = useState(false);
+  const [submittedReportId, setSubmittedReportId] = useState<string | null>(null);
   const [isSelectingLocation, setIsSelectingLocation] = useState(false);
   const [focusedIssueId, setFocusedIssueId] = useState<string | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(
@@ -81,8 +83,8 @@ export default function App() {
     );
   }, [newIssue, notificationsEnabled]);
 
-  const openCount = allIssues.filter((i) => i.status === "open").length;
-  const resolvedCount = allIssues.filter((i) => i.status === "resolved").length;
+  const openCount = allIssues.filter((i) => ["UNVERIFIED", "UNDER_REVIEW", "CORROBORATED", "VERIFIED"].includes(i.status)).length;
+  const resolvedCount = allIssues.filter((i) => i.status === "RESOLVED").length;
 
   function handleStartReporting() {
     setFocusedIssueId(null);
@@ -99,12 +101,13 @@ export default function App() {
     setIsSelectingLocation(false);
   }
 
-  function handleSubmitted() {
+  function handleSubmitted(reportId: string) {
     setPendingPoint(null);
     setIsSelectingLocation(false);
     setFocusedIssueId(null);
     setViewMode("feed");
     setJustSubmitted(true);
+    setSubmittedReportId(reportId);
     setTimeout(() => setJustSubmitted(false), 4000);
   }
 
@@ -125,6 +128,11 @@ export default function App() {
 
   function handleShowAllReports() {
     setFocusedIssueId(null);
+  }
+
+  function dismissSubmissionConfirmation() {
+    setSubmittedReportId(null);
+    setJustSubmitted(false);
   }
 
   function handleEnableResidentNotifications() {
@@ -278,8 +286,27 @@ export default function App() {
               )}
 
               {justSubmitted && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs px-4 py-2.5 rounded-lg shadow-xl z-50 animate-bounce font-medium">
-                  Report published to feed successfully!
+                <div className="fixed bottom-6 left-1/2 z-50 w-[min(92vw,28rem)] -translate-x-1/2 rounded-xl border border-primary/30 bg-card p-4 text-card-foreground shadow-2xl">
+                  <div className="flex items-start gap-3">
+                    <span className="text-lg text-primary">✓</span>
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <p className="font-semibold">Report submitted</p>
+                      <p className="text-xs text-muted-foreground">Your report is currently:</p>
+                      <p className="text-sm font-bold text-muted-foreground">UNVERIFIED</p>
+                      <p className="text-xs leading-relaxed text-muted-foreground">Your identity remains private. The report may be corroborated by other verified residents and reviewed by authorized planners.</p>
+                      {submittedReportId && <p className="rounded-md bg-muted px-2 py-1 font-mono text-[11px]">Report ID: {submittedReportId}</p>}
+                      <div className="space-y-1 border-t border-border pt-2 text-[11px] text-muted-foreground">
+                        <p className="font-semibold text-foreground">Tracking</p>
+                        <p>Submitted</p>
+                        <p>Evidence checked</p>
+                        <p>Under review</p>
+                        <p>Corroborated</p>
+                        <p>Verified</p>
+                        <p>Resolved</p>
+                      </div>
+                      <Button type="button" variant="outline" size="sm" onClick={dismissSubmissionConfirmation}>Close</Button>
+                    </div>
+                  </div>
                 </div>
               )}
             </>

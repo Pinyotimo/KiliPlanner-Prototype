@@ -7,6 +7,9 @@ export const CATEGORY_ORDER: IssueCategory[] = [
   "waste",
   "pollution",
   "road_damage",
+  "construction",
+  "land_planning",
+  "drainage",
   "encroachment",
   "other",
 ];
@@ -32,12 +35,12 @@ export interface CategoryMetric {
 }
 
 export function getStatusMetrics(issues: Issue[]): StatusMetrics {
-  const open = issues.filter((issue) => issue.status === "open").length;
+  const open = issues.filter((issue) => ["UNVERIFIED", "UNDER_REVIEW", "CORROBORATED", "VERIFIED"].includes(issue.status)).length;
   const inProgress = issues.filter(
-    (issue) => issue.status === "in_progress",
+    (issue) => issue.status === "UNDER_REVIEW" || issue.status === "CORROBORATED",
   ).length;
   const resolved = issues.filter(
-    (issue) => issue.status === "resolved" || issue.status === "closed",
+    (issue) => issue.status === "RESOLVED",
   ).length;
   const total = issues.length;
 
@@ -59,16 +62,16 @@ export function getCategoryMetrics(issues: Issue[]): CategoryMetric[] {
     );
     const count = categoryIssues.length;
     const resolved = categoryIssues.filter(
-      (issue) => issue.status === "resolved" || issue.status === "closed",
+      (issue) => issue.status === "RESOLVED",
     ).length;
 
     return {
       category,
       name: CATEGORY_LABELS[category],
       count,
-      open: categoryIssues.filter((issue) => issue.status === "open").length,
+      open: categoryIssues.filter((issue) => ["UNVERIFIED", "UNDER_REVIEW", "CORROBORATED", "VERIFIED"].includes(issue.status)).length,
       inProgress: categoryIssues.filter(
-        (issue) => issue.status === "in_progress",
+        (issue) => issue.status === "UNDER_REVIEW" || issue.status === "CORROBORATED",
       ).length,
       resolved,
       resolutionRate: count > 0 ? Math.round((resolved / count) * 100) : 0,

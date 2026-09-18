@@ -18,6 +18,9 @@ export const CATEGORY_ICONS: Record<IssueCategory, LucideIcon> = {
   waste: Trash2,
   pollution: Wind,
   road_damage: Construction,
+  construction: Construction,
+  land_planning: NavigationIcon,
+  drainage: Waves,
   encroachment: NavigationIcon,
   other: CircleHelp,
 };

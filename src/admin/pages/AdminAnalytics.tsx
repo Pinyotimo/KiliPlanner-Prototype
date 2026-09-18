@@ -35,8 +35,8 @@ export default function AdminAnalytics({ issues }: { issues: Issue[] }) {
   const now = new Date();
   const weekStart = startOfDay(new Date(now.getTime() - 7 * 86400000));
   const monthStart = startOfDay(new Date(now.getTime() - 30 * 86400000));
-  const resolved = issues.filter((issue) => issue.status === "resolved").length;
-  const open = issues.filter((issue) => issue.status === "open").length;
+  const resolved = issues.filter((issue) => issue.status === "RESOLVED").length;
+  const open = issues.filter((issue) => ["UNVERIFIED", "UNDER_REVIEW", "CORROBORATED", "VERIFIED"].includes(issue.status)).length;
   const categoryCounts = new Map<IssueCategory, number>();
   issues.forEach((issue) =>
     categoryCounts.set(

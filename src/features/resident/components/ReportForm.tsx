@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -35,6 +35,9 @@ const CATEGORIES: [IssueCategory, ...IssueCategory[]] = [
   "waste",
   "pollution",
   "road_damage",
+  "construction",
+  "land_planning",
+  "drainage",
   "encroachment",
   "other",
 ];
@@ -66,7 +69,7 @@ interface ReportFormProps {
   lng: number;
   existingIssues?: Issue[];
   onClose: () => void;
-  onSubmitted: () => void;
+  onSubmitted: (reportId: string) => void;
 }
 
 function getDistanceInMeters(
@@ -100,12 +103,22 @@ export default function ReportForm({
   const [geocoding, setGeocoding] = useState(true);
   const [serverError, setServerError] = useState<string | null>(null);
   const [nearbyDuplicate, setNearbyDuplicate] = useState<Issue | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraPreview, setCameraPreview] = useState<string | null>(null);
+  const [captureMode, setCaptureMode] = useState<"camera" | "gallery" | null>(null);
+  const [capturedAt, setCapturedAt] = useState<string | null>(null);
+  const [step, setStep] = useState(1);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [residentLocation, setResidentLocation] = useState<GeolocationPosition | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const cameraStreamRef = useRef<MediaStream | null>(null);
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    trigger,
   } = useForm<ReportFormValues>({
     resolver: zodResolver(reportSchema),
     defaultValues: {
@@ -121,6 +134,146 @@ export default function ReportForm({
   });
 
   const selectedCategory = watch("category");
+  const requiresLivePhoto = ["security", "sewage", "waste", "construction", "land_planning", "drainage", "encroachment"].includes(selectedCategory);
+
+  function stopCamera() {
+    cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
+    cameraStreamRef.current = null;
+    setCameraOpen(false);
+  }
+
+  useEffect(() => () => stopCamera(), []);
+
+  async function openCamera() {
+    setServerError(null);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setServerError("Camera capture is not available in this browser.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false,
+      });
+      cameraStreamRef.current = stream;
+      setCameraOpen(true);
+      requestAnimationFrame(() => {
+        if (videoRef.current) videoRef.current.srcObject = stream;
+      });
+    } catch (error) {
+      console.error("Camera access failed:", error);
+      setServerError("Camera access is required for this category.");
+    }
+  }
+
+  function capturePhoto() {
+    const video = videoRef.current;
+    if (!video || video.videoWidth === 0 || video.videoHeight === 0) {
+      setServerError("Camera is not ready. Please try again.");
+      return;
+    }
+    const canvas = document.createElement("canvas");
+    const scale = Math.min(800 / video.videoWidth, 800 / video.videoHeight, 1);
+    canvas.width = video.videoWidth * scale;
+    canvas.height = video.videoHeight * scale;
+    canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const captured = canvas.toDataURL("image/jpeg", 0.82);
+    setCameraPreview(captured);
+    setValue("photoBase64", captured, { shouldValidate: true });
+    setCaptureMode("camera");
+    setCapturedAt(new Date().toISOString());
+    stopCamera();
+  }
+
+  function retakePhoto() {
+    setCameraPreview(null);
+    setValue("photoBase64", null, { shouldValidate: true });
+    setCaptureMode(null);
+    setCapturedAt(null);
+    void openCamera();
+  }
+
+  function getCurrentLocation(): Promise<GeolocationPosition> {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error("Resident GPS is unavailable."));
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 10000,
+      });
+    });
+  }
+
+  async function verifyCurrentLocation() {
+    setServerError(null);
+    try {
+      setResidentLocation(await getCurrentLocation());
+      setStep(5);
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : "Unable to obtain current GPS location.");
+    }
+  }
+
+  async function continueToNextStep() {
+    setServerError(null);
+
+    if (step === 1) {
+      if (!selectedCategory) {
+        setServerError("Select a category before continuing.");
+        return;
+      }
+      setStep(2);
+      return;
+    }
+
+    if (step === 2) {
+      const valid = await trigger(["description", "address", "subDetail"]);
+      if (!valid) {
+        setServerError("Complete the issue description before continuing.");
+        return;
+      }
+      setStep(3);
+      return;
+    }
+
+    if (step === 3) {
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        setServerError("Pin a valid report location before continuing.");
+        return;
+      }
+      setStep(4);
+      return;
+    }
+
+    if (step === 4) {
+      if (!residentLocation) {
+        setServerError("Verify your current location before continuing.");
+        return;
+      }
+      setStep(5);
+      return;
+    }
+
+    if (step === 5) {
+      if (requiresLivePhoto && (!watch("photoBase64") || captureMode !== "camera")) {
+        setServerError("Capture and confirm live evidence before continuing.");
+        return;
+      }
+      setStep(6);
+      return;
+    }
+
+    if (step === 6) {
+      if (!privacyAccepted) {
+        setServerError("Accept the privacy notice before continuing.");
+        return;
+      }
+      setStep(7);
+    }
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -157,7 +310,7 @@ export default function ReportForm({
     }
 
     const duplicate = existingIssues.find((issue) => {
-      if (issue.status !== "open" || issue.category !== selectedCategory)
+      if (!["UNVERIFIED", "UNDER_REVIEW"].includes(issue.status) || issue.category !== selectedCategory)
         return false;
       const distance = getDistanceInMeters(lat, lng, issue.lat, issue.lng);
       return distance <= 50;
@@ -215,12 +368,9 @@ export default function ReportForm({
     setSubmitting(true);
     setServerError(null);
 
-    const newUpvoteCount = (nearbyDuplicate.upvotes || 1) + 1;
-
-    const { error } = await supabase
-      .from("issues")
-      .update({ upvotes: newUpvoteCount })
-      .eq("id", nearbyDuplicate.id);
+    const { error } = await supabase.functions.invoke("endorse-issue", {
+      body: { issueId: nearbyDuplicate.id },
+    });
 
     setSubmitting(false);
 
@@ -228,7 +378,7 @@ export default function ReportForm({
       console.error("Supabase upvote error:", error);
       setServerError("Failed to endorse existing issue.");
     } else {
-      onSubmitted();
+      onSubmitted(String(nearbyDuplicate.id));
     }
   }
 
@@ -236,53 +386,52 @@ export default function ReportForm({
     setSubmitting(true);
     setServerError(null);
 
-    const isSecurity = data.category === "security";
-
-    // Get or create unique browser device fingerprint
-    let deviceId = localStorage.getItem("kili_device_id");
-    if (!deviceId) {
-      deviceId = crypto.randomUUID();
-      localStorage.setItem("kili_device_id", deviceId);
+    if (!residentLocation) {
+      setSubmitting(false);
+      setServerError("Verify your current location before submitting.");
+      setStep(4);
+      return;
     }
 
-    const { data: newIssue, error } = await supabase
-      .from("issues")
-      .insert({
+    const { data: submission, error } = await supabase.functions.invoke("submit-report", {
+      body: {
         category: data.category,
         description: data.description.trim(),
         sub_detail: data.subDetail?.trim() || null,
         lat,
         lng,
         address: data.address?.trim() || null,
-        reporter_name: data.reporterName?.trim() || null,
-        reporter_email: data.reporterEmail?.trim() || null,
-        photo_base64: data.photoBase64 || null,
-        status: "open",
-        upvotes: 1,
-        is_security_alert: isSecurity,
-        unsafe_time: isSecurity ? data.unsafeTime || "Night (After 7 PM)" : null,
-        device_id: deviceId,
-      })
-      .select()
-      .single();
+        evidence: data.photoBase64 || null,
+        evidenceMimeType: data.photoBase64 ? "image/jpeg" : null,
+        evidenceCaptureMode: captureMode,
+        evidenceCapturedAt: capturedAt,
+        evidenceCaptureLatitude: lat,
+        evidenceCaptureLongitude: lng,
+        evidenceLocationAccuracy: null,
+        userLat: residentLocation.coords.latitude,
+        userLng: residentLocation.coords.longitude,
+        userLocationAccuracy: residentLocation.coords.accuracy,
+        userLocationTimestamp: new Date(residentLocation.timestamp).toISOString(),
+      },
+    });
 
     setSubmitting(false);
 
     if (error) {
-      console.error("Supabase insert error:", error);
-      setServerError(error.message);
+      console.error("Trusted report submission error:", error);
+      setServerError(error.message || "Report submission failed.");
     } else {
       // Save newly created issue ID locally
-      if (newIssue) {
+      if (submission?.report?.id) {
         const existingIds: string[] = JSON.parse(
           localStorage.getItem("kili_my_issue_ids") || "[]"
         );
         localStorage.setItem(
           "kili_my_issue_ids",
-          JSON.stringify([...existingIds, String(newIssue.id)])
+          JSON.stringify([...existingIds, String(submission.report.id)])
         );
       }
-      onSubmitted();
+      onSubmitted(String(submission?.report?.id || ""));
     }
   }
 
@@ -294,6 +443,12 @@ export default function ReportForm({
             <AlertTriangle className="h-5 w-5 text-primary" />
             Report an Issue or Safety Concern
           </DialogTitle>
+          <div className="grid grid-cols-8 gap-1 pt-3" aria-label="Report submission steps">
+            {Array.from({ length: 8 }, (_, index) => (
+              <div key={index} className={cn("h-1 rounded-full", index + 1 <= step ? "bg-primary" : "bg-muted")} />
+            ))}
+          </div>
+          <p className="text-[11px] font-semibold text-muted-foreground">Step {step} of 8</p>
         </DialogHeader>
 
         {serverError && (
@@ -325,6 +480,7 @@ export default function ReportForm({
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 text-xs">
+          {step === 1 && (
           <div className="space-y-2">
             <label className="font-semibold text-foreground block">
               Select Category *
@@ -364,8 +520,9 @@ export default function ReportForm({
               })}
             </div>
           </div>
+          )}
 
-          {selectedCategory === "security" && (
+          {step === 2 && selectedCategory === "security" && (
             <div className="bg-destructive/10 border border-destructive/30 p-3 rounded-xl space-y-2">
               <div className="flex items-center gap-1.5 font-bold text-destructive dark:text-destructive">
                 <ShieldAlert className="h-4 w-4" />
@@ -397,7 +554,7 @@ export default function ReportForm({
             </div>
           )}
 
-          <div className="space-y-1.5">
+          {step === 2 && <div className="space-y-1.5">
             <label className="font-semibold text-foreground flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <MapPin className="h-4 w-4 text-primary" />
@@ -419,9 +576,9 @@ export default function ReportForm({
                   : "e.g. Near Argwings Kodhek Rd junction"
               }
             />
-          </div>
+          </div>}
 
-          <div className="space-y-1.5">
+          {step === 2 && <div className="space-y-1.5">
             <label className="font-semibold text-foreground block">
               Description *
             </label>
@@ -434,9 +591,9 @@ export default function ReportForm({
                   : "Describe what's happening..."
               }
             />
-          </div>
+          </div>}
 
-          <div className="space-y-1.5">
+          {step === 3 && <div className="space-y-1.5">
             <label className="font-semibold text-foreground block">
               Specific Detail / Sub-location (Optional)
             </label>
@@ -445,22 +602,49 @@ export default function ReportForm({
               {...register("subDetail")}
               placeholder="e.g. Unlit alleyway near gate"
             />
-          </div>
+            <p className="rounded-lg bg-muted p-3 text-muted-foreground">Your report pin is set at <strong className="text-foreground">{lat.toFixed(5)}, {lng.toFixed(5)}</strong>. This location will be checked against your current GPS before submission.</p>
+          </div>}
 
-          <div className="space-y-1.5">
+          {step === 5 && <div className="space-y-1.5">
             <label className="font-semibold text-foreground flex items-center gap-1.5">
               <Camera className="h-4 w-4 text-muted-foreground" />
-              Attach Photo
+              {requiresLivePhoto ? "Capture Live Evidence" : "Attach Photo"}
             </label>
-            <Input
-              type="file"
-              accept="image/*"
-              onChange={handlePhotoChange}
-              className="cursor-pointer"
-            />
-          </div>
+            {requiresLivePhoto ? (
+              <div className="space-y-2">
+                {!cameraPreview && !cameraOpen && (
+                  <Button type="button" onClick={() => void openCamera()} className="w-full">
+                    <Camera className="mr-2 h-4 w-4" /> Open Camera
+                  </Button>
+                )}
+                {cameraOpen && (
+                  <div className="space-y-2">
+                    <video ref={videoRef} autoPlay playsInline muted className="aspect-video w-full rounded-lg bg-black object-cover" />
+                    <Button type="button" onClick={capturePhoto} className="w-full">Capture</Button>
+                  </div>
+                )}
+                {cameraPreview && (
+                  <div className="space-y-2">
+                    <img src={cameraPreview} alt="Camera preview" className="aspect-video w-full rounded-lg object-cover" />
+                    <div className="flex gap-2">
+                      <Button type="button" variant="outline" onClick={retakePhoto} className="w-1/2">Retake</Button>
+                      <Button type="button" onClick={() => setServerError(null)} className="w-1/2">Confirm</Button>
+                    </div>
+                  </div>
+                )}
+                <p className="text-[11px] text-muted-foreground">Gallery upload is unavailable for this category.</p>
+              </div>
+            ) : (
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoChange}
+                className="cursor-pointer"
+              />
+            )}
+          </div>}
 
-          <div className="grid grid-cols-2 gap-2">
+          {step === 5 && <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
               <label className="font-semibold text-foreground flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5 text-muted-foreground" />
@@ -483,20 +667,55 @@ export default function ReportForm({
                 placeholder="jane@example.com"
               />
             </div>
-          </div>
+          </div>}
+
+          {step === 4 && (
+            <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
+              <MapPin className="h-6 w-6 text-primary" />
+              <h3 className="font-semibold text-foreground">Verify current location</h3>
+              <p className="text-muted-foreground">We use a fresh GPS reading to compare where you are with the report pin. Your coordinates are used for verification, not shown publicly.</p>
+              <Button type="button" onClick={() => void verifyCurrentLocation()} className="w-full">Verify Current Location</Button>
+            </div>
+          )}
+
+          {step === 6 && (
+            <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
+              <h3 className="font-semibold text-foreground">Privacy notice</h3>
+              <p className="text-muted-foreground">Your identity remains private. Authorized trust and safety systems use verification, location, and evidence metadata to assess the report. The public sees the report and its trust state, not your phone, email, resident ID, or device ID.</p>
+              <label className="flex items-start gap-2 text-foreground"><input type="checkbox" checked={privacyAccepted} onChange={(event) => setPrivacyAccepted(event.target.checked)} className="mt-0.5" /> I understand and agree to submit this report for verification.</label>
+            </div>
+          )}
+
+          {step === 7 && (
+            <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
+              <h3 className="font-semibold text-foreground">Review report</h3>
+              <p><strong>Category:</strong> {CATEGORY_LABELS[selectedCategory]}</p>
+              <p><strong>Description:</strong> {watch("description")}</p>
+              <p><strong>Evidence:</strong> {watch("photoBase64") ? "Attached" : "None"}</p>
+              <p><strong>Location:</strong> {lat.toFixed(5)}, {lng.toFixed(5)}</p>
+            </div>
+          )}
 
           <div className="flex gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
-              onClick={onClose}
+              onClick={() => (step === 1 ? onClose() : setStep((current) => current - 1))}
               className="w-1/2"
             >
-              Cancel
+              {step === 1 ? "Cancel" : "Back"}
             </Button>
-            <Button type="submit" disabled={submitting} className="w-1/2">
-              {submitting ? "Publishing..." : "Publish Post"}
-            </Button>
+            {step === 3 ? (
+              <Button type="button" onClick={() => setStep(4)} className="w-1/2">Verify Location</Button>
+            ) : step === 4 ? <div className="w-1/2" /> : step === 6 ? (
+              <Button type="button" disabled={!privacyAccepted} onClick={() => setStep(7)} className="w-1/2">Review Report</Button>
+            ) : step < 5 ? (
+              <Button type="button" onClick={() => void continueToNextStep()} className="w-1/2">Continue</Button>
+            ) : step === 5 ? (
+              <Button type="button" onClick={() => void continueToNextStep()} className="w-1/2">Privacy Notice</Button>
+            ) : (
+              <Button type={step === 7 ? "submit" : "button"} disabled={submitting} onClick={step === 6 ? () => void continueToNextStep() : undefined} className="w-1/2">{step === 6 ? "Review Report" : submitting ? "Submitting..." : "Submit Report"}</Button>
+            )}
           </div>
         </form>
       </DialogContent>

@@ -31,14 +31,14 @@ function routeTitle(pathname: string): string {
 
 export default function PlannerConsole() {
   const pathname = useLocation();
-  const { session, loading: sessionLoading } = usePlannerSession();
+  const { session, loading: sessionLoading, authState } = usePlannerSession();
   if (sessionLoading)
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-sm text-primary-foreground">
         Checking planner access...
       </div>
     );
-  if (!session) return <PlannerLogin />;
+  if (!session || authState.state !== "ADMIN") return <PlannerLogin />;
 
   return <AuthenticatedPlannerConsole pathname={pathname} />;
 }

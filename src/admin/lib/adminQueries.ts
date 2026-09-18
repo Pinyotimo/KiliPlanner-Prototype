@@ -36,9 +36,12 @@ export async function getAdminIssuesPage(query: AdminIssuePageQuery) {
 }
 
 export async function updateAdminIssueStatus(id: string, status: IssueStatus) {
-  return supabase.from("issues").update({ status }).eq("id", id);
+  return supabase.rpc("transition_report_state", {
+    target_report_id: id,
+    next_state: status,
+  });
 }
 
 export function getAdminStats(issues: Issue[]) {
-  return { total: issues.length, open: issues.filter((issue) => issue.status === "open").length, resolved: issues.filter((issue) => issue.status === "resolved").length };
+  return { total: issues.length, open: issues.filter((issue) => ["UNDER_REVIEW", "CORROBORATED", "VERIFIED"].includes(issue.status)).length, resolved: issues.filter((issue) => issue.status === "RESOLVED").length };
 }

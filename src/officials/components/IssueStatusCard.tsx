@@ -101,10 +101,11 @@ export const IssueStatusCard: React.FC<IssueStatusCardProps> = ({
             onChange={(e) => setStatus(e.target.value as IssueStatus)}
             className="w-full text-sm rounded-md border-input shadow-sm p-2 border focus:ring-1 focus:ring-primary"
           >
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
+            <option value="UNDER_REVIEW">Under Review</option>
+            <option value="CORROBORATED">Corroborated</option>
+            <option value="VERIFIED">Verified</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="REJECTED">Rejected</option>
           </select>
         </div>
 

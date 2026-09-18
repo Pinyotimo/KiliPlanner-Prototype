@@ -7,7 +7,10 @@ import { getPlannerSettings } from "../lib/plannerSettings";
 
 export default function AdminIssues({ searchTerm = "", refreshKey = 0 }: { searchTerm?: string; refreshKey?: number }) {
   const [category, setCategory] = useState<IssueCategory | "all">("all");
-  const [status, setStatus] = useState<IssueStatus | "all">(() => getPlannerSettings().defaultIssueFilter);
+  const [status, setStatus] = useState<IssueStatus | "all">(() => {
+    const configured = getPlannerSettings().defaultIssueFilter;
+    return configured === "open" ? "UNDER_REVIEW" : configured === "resolved" ? "RESOLVED" : "all";
+  });
   const [dateRange, setDateRange] = useState<"all" | "today" | "7d" | "30d">("all");
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
   const [page, setPage] = useState(1);

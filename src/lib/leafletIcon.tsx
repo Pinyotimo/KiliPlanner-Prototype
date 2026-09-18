@@ -42,3 +42,15 @@ export function createCategoryDivIcon(category: IssueCategory) {
     popupAnchor: [0, -32],
   });
 }
+
+export function createIssueDivIcon(category: IssueCategory, status: string) {
+  const icon = createCategoryDivIcon(category);
+  if (status !== "UNVERIFIED") return icon;
+  return L.divIcon({
+    className: "custom-category-pin opacity-60 grayscale",
+    html: icon.options.html,
+    iconSize: icon.options.iconSize,
+    iconAnchor: icon.options.iconAnchor,
+    popupAnchor: icon.options.popupAnchor,
+  });
+}

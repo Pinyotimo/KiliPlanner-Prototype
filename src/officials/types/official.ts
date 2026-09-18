@@ -2,7 +2,7 @@ import { Issue } from '@/types/issue';
 import { ReactNode } from 'react';
 
 // Extends your core Issue type with properties specific to official tracking
-export type IssueStatus = 'pending' | 'in_progress' | 'resolved' | 'closed';
+export type IssueStatus = 'UNDER_REVIEW' | 'CORROBORATED' | 'VERIFIED' | 'RESOLVED' | 'REJECTED';
 
 export interface OfficialUser {
   id: string;

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import type { Session } from "@supabase/supabase-js";
+import { getRoleFromSession, resolveAuthState } from "../../lib/authState";
 
 export function usePlannerSession() {
   const [session, setSession] = useState<Session | null>(null);
@@ -23,7 +24,12 @@ export function usePlannerSession() {
     };
   }, []);
 
-  return { session, loading };
+  const authState = resolveAuthState({
+    session,
+    role: getRoleFromSession(session),
+  });
+
+  return { session, loading, authState };
 }
 
 export function useLocation(): string {

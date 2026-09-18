@@ -17,7 +17,7 @@ import {
   KILIMANI_DEFAULT_ZOOM,
 } from "../data/kilimaniBoundary";
 import { isInsideKilimani } from "../lib/boundaryCheck";
-import { createCategoryDivIcon } from "../lib/leafletIcon";
+import { createIssueDivIcon } from "../lib/leafletIcon";
 import { CategoryIcon } from "./CategoryIcon";
 import type { Issue } from "../types/issue";
 import { CATEGORY_LABELS } from "../types/issue";
@@ -318,7 +318,7 @@ export default function MapView({
               <Marker
                 key={issue.id}
                 position={[issue.lat, issue.lng]}
-                icon={createCategoryDivIcon(issue.category)}
+                icon={createIssueDivIcon(issue.category, issue.status)}
                 eventHandlers={{
                   click: () => onIssueSelect?.(issue),
                 }}
@@ -343,10 +343,18 @@ export default function MapView({
                         {CATEGORY_LABELS[issue.category] || issue.category}
                       </Badge>
                       <Badge
-                        variant={issue.status === "resolved" ? "default" : "secondary"}
+                        variant={issue.status === "RESOLVED" ? "default" : "secondary"}
                         className="capitalize text-[10px]"
                       >
-                        {issue.status}
+                        {issue.status === "UNVERIFIED"
+                          ? "Community report — under verification"
+                          : issue.status === "CORROBORATED"
+                            ? "Corroborated infrastructure issue"
+                            : issue.status === "VERIFIED"
+                              ? "✓ Verified Infrastructure Issue"
+                              : issue.status === "RESOLVED"
+                                ? "✓ Resolved"
+                                : issue.status.replace("_", " ")}
                       </Badge>
                     </div>
 
