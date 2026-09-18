@@ -22,6 +22,7 @@ export const IssueStatusCard: React.FC<IssueStatusCardProps> = ({
 
   // Check if issue is flagged as security priority
   const isSecurity = issue.is_security_alert || issue.category === "security";
+  const isGreenProject = issue.category === "green_project";
 
   // Extract photo source whether stored as base64 string or image URL
   const photoSource = (issue as any).photo_base64 || (issue as any).photo_url;
@@ -68,9 +69,11 @@ export const IssueStatusCard: React.FC<IssueStatusCardProps> = ({
             </span>
           </p>
         </div>
-        <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary shrink-0">
-          {status.replace("_", " ").toUpperCase()}
-        </span>
+        {!isGreenProject && (
+          <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary shrink-0">
+            {status.replace("_", " ").toUpperCase()}
+          </span>
+        )}
       </div>
 
       <p className="text-foreground text-sm leading-relaxed">
@@ -92,25 +95,30 @@ export const IssueStatusCard: React.FC<IssueStatusCardProps> = ({
         onSubmit={handleSubmit}
         className="space-y-3 pt-3 border-t border-border"
       >
-        <div>
-          <label className="block text-xs font-medium text-foreground mb-1">
-            Update Status
-          </label>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as IssueStatus)}
-            className="w-full text-sm rounded-md border-input shadow-sm p-2 border focus:ring-1 focus:ring-primary"
-          >
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
-          </select>
-        </div>
+        {!isGreenProject && (
+          <div>
+            <label className="block text-xs font-medium text-foreground mb-1">
+              Update Status
+            </label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as IssueStatus)}
+              disabled={isGreenProject}
+              className="w-full text-sm rounded-md border-input shadow-sm p-2 border focus:ring-1 focus:ring-primary"
+            >
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-medium text-foreground mb-1">
-            Official Resolution Notes
+            {isGreenProject
+              ? "Official Planning Notes"
+              : "Official Resolution Notes"}
           </label>
           <textarea
             value={notes}
@@ -126,7 +134,11 @@ export const IssueStatusCard: React.FC<IssueStatusCardProps> = ({
           disabled={isSubmitting}
           className="w-full py-2 px-4 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-opacity-90 disabled:opacity-50 transition-colors"
         >
-          {isSubmitting ? "Saving..." : "Update Issue"}
+          {isSubmitting
+            ? "Saving..."
+            : isGreenProject
+              ? "Save Planning Notes"
+              : "Update Issue"}
         </button>
       </form>
     </div>
