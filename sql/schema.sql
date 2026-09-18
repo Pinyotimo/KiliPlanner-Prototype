@@ -131,6 +131,25 @@ for each row execute function enqueue_nearby_security_alert();
 
 alter publication supabase_realtime add table geo_alert_notifications;
 
+-- Green Pin proposals are community planning ideas. Officials may review them,
+-- but their issue status must remain immutable.
+create or replace function prevent_green_project_status_change()
+returns trigger
+language plpgsql
+as $$
+begin
+  if old.category = 'green_project' and new.status is distinct from old.status then
+    raise exception 'Green Pin project statuses cannot be changed by officials';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists green_project_status_immutable on issues;
+create trigger green_project_status_immutable
+before update on issues
+for each row execute function prevent_green_project_status_change();
+
 -- ── Optional: sample rows so the map isn't empty during a dry run ───────
 -- Uncomment and adjust coordinates to fall inside your traced boundary
 -- before running.

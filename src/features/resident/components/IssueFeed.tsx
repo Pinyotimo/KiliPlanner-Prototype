@@ -110,10 +110,13 @@ const IssueCardItem = memo(
       photo_base64: issue.photo_base64 || null,
     });
 
-    // Only apply the red security priority styling if the issue is NOT resolved or closed
-    const isSecurity = (issue.is_security_alert || issue.category === "security") 
-      && issue.status !== "resolved" 
-      && issue.status !== "closed";
+    const isSecurity =
+      (issue.is_security_alert || issue.category === "security") &&
+      issue.status !== "resolved" &&
+      issue.status !== "closed";
+
+    const isGreenProject = issue.category === "green_project";
+
     const categoryColor =
       CATEGORY_COLORS[issue.category] || "var(--category-other)";
     const displayUpvotes =
@@ -189,9 +192,6 @@ const IssueCardItem = memo(
 
       try {
         await upvoteIssue(issue.id, deviceId);
-        
-        // --- AUTOMATED ESCALATION EMAIL ---
-        // Replace with your actual Formspree URL
         const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
         fetch(EMAIL_GATEWAY_URL, {
           method: "POST",
@@ -202,11 +202,12 @@ const IssueCardItem = memo(
             category: issue.category,
             description: issue.description,
             location: issue.address || "Location on map",
-            action_required: "This issue has received a new community endorsement. Please prioritize its resolution.",
+            action_required:
+              "This issue has received a new community endorsement. Please prioritize its resolution.",
           }),
-        }).catch((err) => console.error("Escalation email failed to send", err));
-        // ----------------------------------
-
+        }).catch((err) =>
+          console.error("Escalation email failed to send", err),
+        );
       } catch (err) {
         console.error("Failed to register vote:", err);
         setLocalUpvotes(displayUpvotes);
@@ -224,6 +225,7 @@ const IssueCardItem = memo(
           category: editForm.category,
           sub_detail: editForm.sub_detail || null,
           photo_base64: editForm.photo_base64,
+          is_security_alert: editForm.category === "security",
         };
 
         if (onUpdate) {
@@ -272,7 +274,7 @@ const IssueCardItem = memo(
           isSecurity
             ? "border-destructive/80 bg-destructive/2 dark:bg-destructive/10 ring-1 ring-destructive/20"
             : isWasteOverdue
-              ? "border-amber-500/70 bg-amber-500/5 ring-1 ring-amber-500/20"
+              ? "border-warning/70 bg-warning/5 ring-1 ring-warning/20"
               : isTargeted
                 ? "ring-2 ring-primary border-primary shadow-lg scale-[1.01]"
                 : "border-border/80 hover:shadow-md"
@@ -296,7 +298,7 @@ const IssueCardItem = memo(
           <div
             className={`space-y-2 rounded-xl border px-3 py-2.5 ${
               isWasteOverdue
-                ? "border-amber-500/50 bg-amber-500/10 text-amber-950 dark:text-amber-100"
+                ? "border-warning/50 bg-warning/10 text-warning-foreground"
                 : wasteSla.completed
                   ? "border-primary/30 bg-primary/5"
                   : "border-border/70 bg-muted/40"
@@ -320,7 +322,7 @@ const IssueCardItem = memo(
               <div
                 className={`h-full rounded-full transition-[width] duration-500 ${
                   isWasteOverdue
-                    ? "bg-amber-600 dark:bg-amber-400"
+                    ? "bg-warning"
                     : wasteSla.completed
                       ? "bg-primary"
                       : "bg-accent-foreground"
@@ -362,12 +364,14 @@ const IssueCardItem = memo(
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <span
-              className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border shadow-2xs ${statusConfig.color}`}
-            >
-              {statusConfig.icon}
-              <span className="whitespace-nowrap">{statusConfig.label}</span>
-            </span>
+            {!isGreenProject && (
+              <span
+                className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border shadow-2xs ${statusConfig.color}`}
+              >
+                {statusConfig.icon}
+                <span className="whitespace-nowrap">{statusConfig.label}</span>
+              </span>
+            )}
 
             {isOwner && !isEditing && (
               <div className="flex items-center gap-1 border-l border-border/50 pl-2">
@@ -496,7 +500,7 @@ const IssueCardItem = memo(
                     onClick={() =>
                       setEditForm({ ...editForm, photo_base64: null })
                     }
-                    className="absolute top-2 right-2 bg-destructive text-white p-1 rounded-full shadow-md hover:bg-destructive/80 cursor-pointer"
+                    className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-1 rounded-full shadow-md hover:bg-destructive/80 cursor-pointer"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
