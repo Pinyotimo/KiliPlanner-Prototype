@@ -11,6 +11,7 @@ import {
   Loader2,
   ShieldAlert,
   Clock,
+  Sprout,
 } from "lucide-react";
 import { supabase } from "../../../lib/supabaseClient";
 import { reverseGeocode } from "../../../lib/reverseGeocode";
@@ -36,6 +37,7 @@ const CATEGORIES: [IssueCategory, ...IssueCategory[]] = [
   "pollution",
   "road_damage",
   "encroachment",
+  "green_project",
   "other",
 ];
 
@@ -89,6 +91,36 @@ function getDistanceInMeters(
   return R * c;
 }
 
+// ------------------------------------------------------------------
+// AUTOMATED EMAIL DISPATCHER (Hackathon Implementation)
+// ------------------------------------------------------------------
+async function dispatchEmailToAuthority(issueData: any, lat: number, lng: number) {
+  // Replace this URL with your Formspree endpoint (see instructions below)
+  const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
+
+  try {
+    await fetch(EMAIL_GATEWAY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subject: `🚨 KiliPlanner Alert: New ${issueData.category.toUpperCase()} Report`,
+        category: issueData.category,
+        urgency: issueData.is_security_alert ? "HIGH - Security Risk" : "Standard",
+        description: issueData.description,
+        location_details: issueData.address || "Address not provided",
+        exact_coordinates: `${lat}, ${lng}`,
+        google_maps_link: `https://maps.google.com/?q=${lat},${lng}`,
+        reporter: issueData.reporter_name || "Anonymous Resident",
+        action_required: "Please log into the KiliPlanner Official Dashboard to acknowledge and update the status of this ticket.",
+      }),
+    });
+    console.log("Automated dispatch email sent to authorities.");
+  } catch (error) {
+    console.error("Failed to send automated email:", error);
+  }
+}
+// ------------------------------------------------------------------
+
 export default function ReportForm({
   lat,
   lng,
@@ -101,24 +133,21 @@ export default function ReportForm({
   const [serverError, setServerError] = useState<string | null>(null);
   const [nearbyDuplicate, setNearbyDuplicate] = useState<Issue | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-  } = useForm<ReportFormValues>({
-    resolver: zodResolver(reportSchema),
-    defaultValues: {
-      category: "security",
-      description: "",
-      subDetail: "",
-      address: "",
-      reporterName: "",
-      reporterEmail: "",
-      photoBase64: null,
-      unsafeTime: "Night (After 7 PM)",
+  const { register, handleSubmit, setValue, watch } = useForm<ReportFormValues>(
+    {
+      resolver: zodResolver(reportSchema),
+      defaultValues: {
+        category: "security",
+        description: "",
+        subDetail: "",
+        address: "",
+        reporterName: "",
+        reporterEmail: "",
+        photoBase64: null,
+        unsafeTime: "Night (After 7 PM)",
+      },
     },
-  });
+  );
 
   const selectedCategory = watch("category");
 
@@ -132,7 +161,7 @@ export default function ReportForm({
           if (resolvedAddress) {
             setValue("address", resolvedAddress);
           } else {
-            setValue("address", ""); // Clear if nothing is found
+            setValue("address", "");
           }
           setGeocoding(false);
         }
@@ -140,8 +169,8 @@ export default function ReportForm({
       .catch((error) => {
         console.error("Geocoding failed:", error);
         if (isMounted) {
-          setValue("address", ""); // Fallback to empty so user can type
-          setGeocoding(false); // Stop the infinite loading spinner
+          setValue("address", "");
+          setGeocoding(false); 
         }
       });
 
@@ -222,12 +251,29 @@ export default function ReportForm({
       .update({ upvotes: newUpvoteCount })
       .eq("id", nearbyDuplicate.id);
 
-    setSubmitting(false);
-
     if (error) {
       console.error("Supabase upvote error:", error);
       setServerError("Failed to endorse existing issue.");
+      setSubmitting(false);
     } else {
+      // --- AUTOMATED ESCALATION EMAIL ---
+      // Replace with your actual Formspree URL
+      const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
+      fetch(EMAIL_GATEWAY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: `⚠️ Escalation: ${nearbyDuplicate.category.toUpperCase()} Issue Gaining Traction`,
+          total_endorsements: newUpvoteCount,
+          category: nearbyDuplicate.category,
+          description: nearbyDuplicate.description,
+          location: nearbyDuplicate.address || `${nearbyDuplicate.lat}, ${nearbyDuplicate.lng}`,
+          action_required: "A resident attempted to report a duplicate issue and endorsed this instead. Please review.",
+        }),
+      }).catch((err) => console.error("Escalation email failed to send", err));
+      // ----------------------------------
+      
+      setSubmitting(false);
       onSubmitted();
     }
   }
@@ -238,50 +284,58 @@ export default function ReportForm({
 
     const isSecurity = data.category === "security";
 
-    // Get or create unique browser device fingerprint
     let deviceId = localStorage.getItem("kili_device_id");
     if (!deviceId) {
       deviceId = crypto.randomUUID();
       localStorage.setItem("kili_device_id", deviceId);
     }
 
+    // 1. Prepare data for database
+    const insertData = {
+      category: data.category,
+      description: data.description.trim(),
+      sub_detail: data.subDetail?.trim() || null,
+      lat,
+      lng,
+      address: data.address?.trim() || null,
+      reporter_name: data.reporterName?.trim() || null,
+      reporter_email: data.reporterEmail?.trim() || null,
+      photo_base64: data.photoBase64 || null,
+      status: "open",
+      upvotes: 1,
+      is_security_alert: isSecurity,
+      unsafe_time: isSecurity ? data.unsafeTime || "Night (After 7 PM)" : null,
+      device_id: deviceId,
+    };
+
+    // 2. Save to Supabase
     const { data: newIssue, error } = await supabase
       .from("issues")
-      .insert({
-        category: data.category,
-        description: data.description.trim(),
-        sub_detail: data.subDetail?.trim() || null,
-        lat,
-        lng,
-        address: data.address?.trim() || null,
-        reporter_name: data.reporterName?.trim() || null,
-        reporter_email: data.reporterEmail?.trim() || null,
-        photo_base64: data.photoBase64 || null,
-        status: "open",
-        upvotes: 1,
-        is_security_alert: isSecurity,
-        unsafe_time: isSecurity ? data.unsafeTime || "Night (After 7 PM)" : null,
-        device_id: deviceId,
-      })
+      .insert(insertData)
       .select()
       .single();
-
-    setSubmitting(false);
 
     if (error) {
       console.error("Supabase insert error:", error);
       setServerError(error.message);
+      setSubmitting(false);
     } else {
-      // Save newly created issue ID locally
+      // 3. Save ownership locally
       if (newIssue) {
         const existingIds: string[] = JSON.parse(
-          localStorage.getItem("kili_my_issue_ids") || "[]"
+          localStorage.getItem("kili_my_issue_ids") || "[]",
         );
         localStorage.setItem(
           "kili_my_issue_ids",
-          JSON.stringify([...existingIds, String(newIssue.id)])
+          JSON.stringify([...existingIds, String(newIssue.id)]),
         );
+        
+        // 4. Fire the automated email to authorities in the background
+        // (We don't await this because we want the UI to close instantly for the user)
+        dispatchEmailToAuthority(insertData, lat, lng);
       }
+      
+      setSubmitting(false);
       onSubmitted();
     }
   }
@@ -397,6 +451,19 @@ export default function ReportForm({
             </div>
           )}
 
+          {selectedCategory === "green_project" && (
+            <div className="space-y-2 rounded-xl border border-(--category-green)/30 bg-(--category-green)/10 p-3 text-(--category-green)">
+              <div className="flex items-center gap-1.5 font-bold">
+                <Sprout className="h-4 w-4" />
+                <span>Community Planning Proposal</span>
+              </div>
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                Suggest a positive change for this location, such as planting
+                trees, creating a pocket park, or improving a public space.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <label className="font-semibold text-foreground flex items-center justify-between">
               <span className="flex items-center gap-1.5">
@@ -431,7 +498,9 @@ export default function ReportForm({
               placeholder={
                 selectedCategory === "security"
                   ? "Describe safety hazards (e.g., muggings, poor street lighting, suspicious activity)..."
-                  : "Describe what's happening..."
+                  : selectedCategory === "green_project"
+                    ? "Describe the positive change you want here (e.g., plant trees or create a pocket park)..."
+                    : "Describe what's happening..."
               }
             />
           </div>

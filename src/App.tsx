@@ -18,6 +18,12 @@ import {
   getResidentNotificationIds,
   setResidentNotificationIds,
 } from "./lib/notificationStorage";
+import {
+  publishDevicePing,
+  requestNotificationPermission,
+  showSecurityAlertNotification,
+  subscribeToNearbyAlerts,
+} from "./lib/geoFenceNotifications";
 
 type ViewMode = "feed" | "map" | "analytics" | "notifications" | "about";
 type PendingPoint = { lat: number; lng: number };
@@ -61,6 +67,48 @@ export default function App() {
   const [residentNotificationIds, setResidentNotificationIdsState] = useState<
     string[]
   >(() => getResidentNotificationIds());
+
+  useEffect(() => {
+    if (!notificationsEnabled || !navigator.geolocation) return;
+
+    let watchId: number | null = null;
+    let lastPosition: GeolocationPosition | null = null;
+    const publishPosition = (position: GeolocationPosition) => {
+      lastPosition = position;
+      void publishDevicePing(position, true).catch((error) =>
+        console.warn("Could not publish device location:", error),
+      );
+    };
+
+    watchId = navigator.geolocation.watchPosition(
+      publishPosition,
+      (error) => {
+        console.warn(
+          "Location permission is required for nearby alerts:",
+          error,
+        );
+      },
+      { enableHighAccuracy: false, maximumAge: 60000, timeout: 10000 },
+    );
+    const heartbeat = window.setInterval(() => {
+      if (lastPosition) publishPosition(lastPosition);
+    }, 60000);
+
+    const unsubscribe = subscribeToNearbyAlerts((issue) => {
+      updateResidentNotificationIds((current) =>
+        current.includes(issue.id)
+          ? current
+          : [issue.id, ...current].slice(0, 20),
+      );
+      showSecurityAlertNotification(issue);
+    });
+
+    return () => {
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      window.clearInterval(heartbeat);
+      unsubscribe();
+    };
+  }, [notificationsEnabled]);
 
   function updateResidentNotificationIds(
     update: string[] | ((current: string[]) => string[]),
@@ -127,7 +175,8 @@ export default function App() {
     setFocusedIssueId(null);
   }
 
-  function handleEnableResidentNotifications() {
+  async function handleEnableResidentNotifications() {
+    await requestNotificationPermission();
     localStorage.setItem(RESIDENT_NOTIFICATIONS_KEY, "true");
     setNotificationsEnabled(true);
   }

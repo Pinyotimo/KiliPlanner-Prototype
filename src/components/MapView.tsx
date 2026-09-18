@@ -311,7 +311,9 @@ export default function MapView({
             }}
           />
 
-          {issues.map((issue) => {
+          {issues
+            .filter((issue) => issue.status !== "resolved" && issue.status !== "closed")
+            .map((issue) => {
             const isSec = issue.is_security_alert || issue.category === "security";
 
             return (
