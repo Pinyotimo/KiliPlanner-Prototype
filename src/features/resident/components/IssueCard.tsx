@@ -47,6 +47,7 @@ export default function IssueCard({
 
   const categoryColor =
     CATEGORY_COLORS[issue.category] || "var(--category-other)";
+  const isGreenProject = issue.category === "green_project";
 
   // Dynamic status styling helper supporting normalized status keys
   const getStatusBadge = (statusKey: string) => {
@@ -134,7 +135,7 @@ export default function IssueCard({
         </Badge>
 
         {/* Dynamic Status Display or Selector Dropdown */}
-        {isEditable || onStatusChange ? (
+        {!isGreenProject && (isEditable || onStatusChange) ? (
           <div className="relative inline-flex items-center">
             {isUpdating && (
               <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground absolute left-2 z-10" />
@@ -159,14 +160,14 @@ export default function IssueCard({
             </select>
             <ChevronDown className="h-3 w-3 absolute right-2.5 pointer-events-none opacity-60" />
           </div>
-        ) : (
+        ) : !isGreenProject ? (
           <span
             className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border shadow-2xs transition-colors ${statusConfig.color}`}
           >
             {statusConfig.icon}
             <span>{statusConfig.label}</span>
           </span>
-        )}
+        ) : null}
       </CardHeader>
 
       {/* Main Content Body */}

@@ -111,6 +111,7 @@ const IssueCardItem = memo(
     });
 
     const isSecurity = issue.is_security_alert || issue.category === "security";
+    const isGreenProject = issue.category === "green_project";
     const categoryColor =
       CATEGORY_COLORS[issue.category] || "var(--category-other)";
     const displayUpvotes =
@@ -340,12 +341,14 @@ const IssueCardItem = memo(
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <span
-              className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border shadow-2xs ${statusConfig.color}`}
-            >
-              {statusConfig.icon}
-              <span className="whitespace-nowrap">{statusConfig.label}</span>
-            </span>
+            {!isGreenProject && (
+              <span
+                className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border shadow-2xs ${statusConfig.color}`}
+              >
+                {statusConfig.icon}
+                <span className="whitespace-nowrap">{statusConfig.label}</span>
+              </span>
+            )}
 
             {isOwner && !isEditing && (
               <div className="flex items-center gap-1 border-l border-border/50 pl-2">
