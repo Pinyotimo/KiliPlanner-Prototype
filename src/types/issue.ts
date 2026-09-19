@@ -12,7 +12,13 @@ export type IssueCategory =
   | "green_project"
   | "other";
 
-export type IssueStatus = "UNVERIFIED" | "UNDER_REVIEW" | "CORROBORATED" | "REJECTED" | "VERIFIED" | "RESOLVED";
+export type IssueStatus =
+  | "UNVERIFIED"
+  | "UNDER_REVIEW"
+  | "CORROBORATED"
+  | "REJECTED"
+  | "VERIFIED"
+  | "RESOLVED";
 
 export interface Issue {
   id: string;
@@ -27,6 +33,7 @@ export interface Issue {
   reporter_name: string | null;
   reporter_email: string | null;
   photo_base64: string | null;
+  photo_base64_second?: string | null;
   created_at: string;
   upvotes?: number;
   assigned_to?: string | null;

@@ -74,6 +74,7 @@ alter table issues add column if not exists unsafe_time text;
 alter table issues add column if not exists device_id uuid;
 alter table issues add column if not exists upvotes integer not null default 1;
 alter table issues add column if not exists updated_at timestamptz;
+alter table issues add column if not exists photo_base64_second text;
 
 do $$
 begin

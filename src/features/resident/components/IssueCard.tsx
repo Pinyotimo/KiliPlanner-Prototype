@@ -59,15 +59,29 @@ export default function IssueCard({
       case "unverified":
         return {
           color: "bg-muted text-muted-foreground border-border",
-          icon: <Clock3 className="h-3.5 w-3.5 shrink-0 text-accent-foreground" />,
+          icon: (
+            <Clock3 className="h-3.5 w-3.5 shrink-0 text-accent-foreground" />
+          ),
           label: "Community report — under verification",
         };
       case "under_review":
-        return { color: "bg-muted text-muted-foreground border-border", icon: <AlertCircle className="h-3.5 w-3.5 shrink-0" />, label: "Under Review" };
+        return {
+          color: "bg-muted text-muted-foreground border-border",
+          icon: <AlertCircle className="h-3.5 w-3.5 shrink-0" />,
+          label: "Under Review",
+        };
       case "corroborated":
-        return { color: "bg-accent/10 text-accent-foreground border-accent/30", icon: <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />, label: "Corroborated infrastructure issue" };
+        return {
+          color: "bg-accent/10 text-accent-foreground border-accent/30",
+          icon: <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />,
+          label: "Corroborated infrastructure issue",
+        };
       case "verified":
-        return { color: "bg-primary/10 text-primary border-primary/30", icon: <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />, label: "✓ Verified Infrastructure Issue" };
+        return {
+          color: "bg-primary/10 text-primary border-primary/30",
+          icon: <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />,
+          label: "✓ Verified Infrastructure Issue",
+        };
       case "resolved":
       case "fixed":
         return {
@@ -206,6 +220,16 @@ export default function IssueCard({
             <img
               src={issue.photo_base64}
               alt="Report evidence"
+              className="w-full h-full max-h-96 object-cover transition-transform duration-500 group-hover/photo:scale-[1.02]"
+              loading="lazy"
+            />
+          </div>
+        )}
+        {issue.photo_base64_second && (
+          <div className="relative rounded-xl overflow-hidden border border-border/80 dark:border-border bg-background max-h-96 group/photo">
+            <img
+              src={issue.photo_base64_second}
+              alt="Second report evidence angle"
               className="w-full h-full max-h-96 object-cover transition-transform duration-500 group-hover/photo:scale-[1.02]"
               loading="lazy"
             />
