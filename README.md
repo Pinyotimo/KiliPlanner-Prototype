@@ -71,6 +71,10 @@ Officials dashboard at `/officials`:
 
    Open the SQL Editor in Supabase and run the contents of `sql/schema.sql`.
 
+   If the project already has the schema, run
+   `sql/migrations/20260919_add_second_evidence_angle.sql` before submitting
+   reports with two evidence angles.
+
 4. Enable Realtime:
 
    In Supabase, enable Realtime for the `issues` table under Database replication settings.
@@ -95,6 +99,24 @@ Officials dashboard at `/officials`:
    ```
 
    The app opens at http://localhost:5173.
+
+### Grant planner access
+
+Planner access requires a Supabase Auth user with the server-controlled
+`app_metadata.role` claim set to `admin`. Create the user under
+Authentication → Users, then run this in the Supabase SQL Editor, replacing
+the email with the planner account email:
+
+```sql
+update auth.users
+set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
+   || jsonb_build_object('role', 'admin')
+where email = 'planner@example.com';
+```
+
+Sign out of the app and sign in again after changing the role so the session
+JWT contains the new claim. Do not put this update in frontend code or expose
+a service-role key to the browser.
 
 ## Available Routes
 

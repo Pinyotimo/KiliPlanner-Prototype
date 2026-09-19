@@ -61,6 +61,7 @@ const reportSchema = z.object({
     .or(z.literal(""))
     .optional(),
   photoBase64: z.string().nullable().optional(),
+  photoBase64Second: z.string().nullable().optional(),
   unsafeTime: z.string().optional(),
 });
 
@@ -94,7 +95,11 @@ function getDistanceInMeters(
   return R * c;
 }
 
-async function dispatchEmailToAuthority(issueData: any, lat: number, lng: number) {
+async function dispatchEmailToAuthority(
+  issueData: any,
+  lat: number,
+  lng: number,
+) {
   const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
 
   try {
@@ -104,13 +109,16 @@ async function dispatchEmailToAuthority(issueData: any, lat: number, lng: number
       body: JSON.stringify({
         subject: `🚨 KiliPlanner Alert: New ${issueData.category.toUpperCase()} Report`,
         category: issueData.category,
-        urgency: issueData.is_security_alert ? "HIGH - Security Risk" : "Standard",
+        urgency: issueData.is_security_alert
+          ? "HIGH - Security Risk"
+          : "Standard",
         description: issueData.description,
         location_details: issueData.address || "Address not provided",
         exact_coordinates: `${lat}, ${lng}`,
         google_maps_link: `https://maps.google.com/?q=${lat},${lng}`,
         reporter: issueData.reporter_name || "Anonymous Resident",
-        action_required: "Please log into the KiliPlanner Official Dashboard to acknowledge and update the status of this ticket.",
+        action_required:
+          "Please log into the KiliPlanner Official Dashboard to acknowledge and update the status of this ticket.",
       }),
     });
     console.log("Automated dispatch email sent to authorities.");
@@ -132,46 +140,36 @@ export default function ReportForm({
   const [nearbyDuplicate, setNearbyDuplicate] = useState<Issue | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [cameraPreview, setCameraPreview] = useState<string | null>(null);
-  const [captureMode, setCaptureMode] = useState<"camera" | "gallery" | null>(null);
+  const [secondCameraPreview, setSecondCameraPreview] = useState<string | null>(
+    null,
+  );
+  const [captureStage, setCaptureStage] = useState<"first" | "second">("first");
   const [capturedAt, setCapturedAt] = useState<string | null>(null);
   const [step, setStep] = useState(1);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
-  const [residentLocation, setResidentLocation] = useState<GeolocationPosition | null>(null);
-  
+  const [residentLocation, setResidentLocation] =
+    useState<GeolocationPosition | null>(null);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    trigger,
-  } = useForm<ReportFormValues>({
-    resolver: zodResolver(reportSchema),
-    defaultValues: {
-      category: "security",
-      description: "",
-      subDetail: "",
-      address: "",
-      reporterName: "",
-      reporterEmail: "",
-      photoBase64: null,
-      unsafeTime: "Night (After 7 PM)",
-    },
-  });
+  const { register, handleSubmit, setValue, watch, trigger } =
+    useForm<ReportFormValues>({
+      resolver: zodResolver(reportSchema),
+      defaultValues: {
+        category: "security",
+        description: "",
+        subDetail: "",
+        address: "",
+        reporterName: "",
+        reporterEmail: "",
+        photoBase64: null,
+        photoBase64Second: null,
+        unsafeTime: "Night (After 7 PM)",
+      },
+    });
 
   const selectedCategory = watch("category");
-  const requiresLivePhoto = [
-    "security",
-    "sewage",
-    "waste",
-    "construction",
-    "land_planning",
-    "drainage",
-    "encroachment",
-  ].includes(selectedCategory);
-
   function stopCamera() {
     cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
     cameraStreamRef.current = null;
@@ -212,20 +210,33 @@ export default function ReportForm({
     const scale = Math.min(800 / video.videoWidth, 800 / video.videoHeight, 1);
     canvas.width = video.videoWidth * scale;
     canvas.height = video.videoHeight * scale;
-    canvas.getContext("2d")?.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas
+      .getContext("2d")
+      ?.drawImage(video, 0, 0, canvas.width, canvas.height);
     const captured = canvas.toDataURL("image/jpeg", 0.82);
-    setCameraPreview(captured);
-    setValue("photoBase64", captured, { shouldValidate: true });
-    setCaptureMode("camera");
-    setCapturedAt(new Date().toISOString());
+    if (captureStage === "first") {
+      setCameraPreview(captured);
+      setValue("photoBase64", captured, { shouldValidate: true });
+      setCapturedAt(new Date().toISOString());
+    } else {
+      setSecondCameraPreview(captured);
+      setValue("photoBase64Second", captured, { shouldValidate: true });
+    }
     stopCamera();
   }
 
-  function retakePhoto() {
-    setCameraPreview(null);
-    setValue("photoBase64", null, { shouldValidate: true });
-    setCaptureMode(null);
-    setCapturedAt(null);
+  function retakePhoto(stage: "first" | "second") {
+    setCaptureStage(stage);
+    if (stage === "first") {
+      setCameraPreview(null);
+      setSecondCameraPreview(null);
+      setValue("photoBase64", null, { shouldValidate: true });
+      setValue("photoBase64Second", null, { shouldValidate: true });
+      setCapturedAt(null);
+    } else {
+      setSecondCameraPreview(null);
+      setValue("photoBase64Second", null, { shouldValidate: true });
+    }
     void openCamera();
   }
 
@@ -251,7 +262,9 @@ export default function ReportForm({
       setStep(5);
     } catch (error) {
       setServerError(
-        error instanceof Error ? error.message : "Unable to obtain current GPS location."
+        error instanceof Error
+          ? error.message
+          : "Unable to obtain current GPS location.",
       );
     }
   }
@@ -297,8 +310,10 @@ export default function ReportForm({
     }
 
     if (step === 5) {
-      if (requiresLivePhoto && (!watch("photoBase64") || captureMode !== "camera")) {
-        setServerError("Capture and confirm live evidence before continuing.");
+      if (!watch("photoBase64") || !watch("photoBase64Second")) {
+        setServerError(
+          "Capture and confirm both live evidence angles before continuing.",
+        );
         return;
       }
       setStep(6);
@@ -345,7 +360,10 @@ export default function ReportForm({
     }
 
     const duplicate = existingIssues.find((issue) => {
-      if (!["UNVERIFIED", "UNDER_REVIEW", "open"].includes(issue.status) || issue.category !== selectedCategory)
+      if (
+        !["UNVERIFIED", "UNDER_REVIEW", "open"].includes(issue.status) ||
+        issue.category !== selectedCategory
+      )
         return false;
       const distance = getDistanceInMeters(lat, lng, issue.lat, issue.lng);
       return distance <= 50;
@@ -353,52 +371,6 @@ export default function ReportForm({
 
     setNearbyDuplicate(duplicate || null);
   }, [selectedCategory, lat, lng, existingIssues]);
-
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setValue("photoBase64", null);
-      setCaptureMode(null);
-      return;
-    }
-
-    const img = new Image();
-    const reader = new FileReader();
-
-    reader.onload = (event) => {
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 800;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
-        setValue("photoBase64", compressedBase64);
-        setCaptureMode("gallery");
-      };
-    };
-
-    reader.readAsDataURL(file);
-  }
 
   async function handleUpvoteExisting() {
     if (!nearbyDuplicate) return;
@@ -422,8 +394,11 @@ export default function ReportForm({
           subject: `⚠️ Escalation: ${nearbyDuplicate.category.toUpperCase()} Issue Gaining Traction`,
           category: nearbyDuplicate.category,
           description: nearbyDuplicate.description,
-          location: nearbyDuplicate.address || `${nearbyDuplicate.lat}, ${nearbyDuplicate.lng}`,
-          action_required: "A resident attempted to report a duplicate issue and endorsed this instead. Please review.",
+          location:
+            nearbyDuplicate.address ||
+            `${nearbyDuplicate.lat}, ${nearbyDuplicate.lng}`,
+          action_required:
+            "A resident attempted to report a duplicate issue and endorsed this instead. Please review.",
         }),
       }).catch((err) => console.error("Escalation email failed to send", err));
 
@@ -461,6 +436,7 @@ export default function ReportForm({
       reporter_name: data.reporterName?.trim() || null,
       reporter_email: data.reporterEmail?.trim() || null,
       photo_base64: data.photoBase64 || null,
+      photo_base64_second: data.photoBase64Second || null,
       status: "open",
       upvotes: 1,
       is_security_alert: isSecurity,
@@ -481,11 +457,11 @@ export default function ReportForm({
     } else {
       if (newIssue) {
         const existingIds: string[] = JSON.parse(
-          localStorage.getItem("kili_my_issue_ids") || "[]"
+          localStorage.getItem("kili_my_issue_ids") || "[]",
         );
         localStorage.setItem(
           "kili_my_issue_ids",
-          JSON.stringify([...existingIds, String(newIssue.id)])
+          JSON.stringify([...existingIds, String(newIssue.id)]),
         );
 
         dispatchEmailToAuthority(insertData, lat, lng);
@@ -504,15 +480,23 @@ export default function ReportForm({
             <AlertTriangle className="h-5 w-5 text-primary" />
             Report an Issue or Safety Concern
           </DialogTitle>
-          <div className="grid grid-cols-7 gap-1 pt-3" aria-label="Report submission steps">
+          <div
+            className="grid grid-cols-7 gap-1 pt-3"
+            aria-label="Report submission steps"
+          >
             {Array.from({ length: 7 }, (_, index) => (
               <div
                 key={index}
-                className={cn("h-1 rounded-full", index + 1 <= step ? "bg-primary" : "bg-muted")}
+                className={cn(
+                  "h-1 rounded-full",
+                  index + 1 <= step ? "bg-primary" : "bg-muted",
+                )}
               />
             ))}
           </div>
-          <p className="text-[11px] font-semibold text-muted-foreground">Step {step} of 7</p>
+          <p className="text-[11px] font-semibold text-muted-foreground">
+            Step {step} of 7
+          </p>
         </DialogHeader>
 
         {serverError && (
@@ -536,7 +520,9 @@ export default function ReportForm({
               disabled={submitting}
               className="w-full bg-accent hover:bg-accent text-primary-foreground font-medium py-1.5 h-auto text-xs"
             >
-              {submitting ? "Endorsing..." : "👍 Endorse Existing Report (+1 Upvote)"}
+              {submitting
+                ? "Endorsing..."
+                : "👍 Endorse Existing Report (+1 Upvote)"}
             </Button>
           </div>
         )}
@@ -563,7 +549,7 @@ export default function ReportForm({
                         "flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all cursor-pointer",
                         isSelected
                           ? "ring-2 border-transparent shadow-xs"
-                          : "border-border hover:bg-muted/50 text-foreground"
+                          : "border-border hover:bg-muted/50 text-foreground",
                       )}
                       style={{
                         backgroundColor: isSelected
@@ -573,7 +559,10 @@ export default function ReportForm({
                         color: isSelected ? color : undefined,
                       }}
                     >
-                      <CategoryIcon category={cat} className="h-4 w-4 shrink-0" />
+                      <CategoryIcon
+                        category={cat}
+                        className="h-4 w-4 shrink-0"
+                      />
                       <span className="font-medium text-xs truncate">
                         {CATEGORY_LABELS[cat]}
                       </span>
@@ -593,8 +582,9 @@ export default function ReportForm({
                     <span>Security Priority Alert</span>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    This report will be pinned as high-priority on community feeds
-                    and maps to alert residents and local security officers.
+                    This report will be pinned as high-priority on community
+                    feeds and maps to alert residents and local security
+                    officers.
                   </p>
                   <div className="space-y-1 pt-1">
                     <label className="font-semibold text-foreground flex items-center gap-1">
@@ -605,12 +595,18 @@ export default function ReportForm({
                       {...register("unsafeTime")}
                       className="w-full bg-background border border-border rounded-lg p-2 text-xs text-foreground focus:ring-2 focus:ring-destructive/20"
                     >
-                      <option value="Night (After 7 PM)">Night (After 7 PM)</option>
-                      <option value="Late Night / Midnight">Late Night / Midnight</option>
+                      <option value="Night (After 7 PM)">
+                        Night (After 7 PM)
+                      </option>
+                      <option value="Late Night / Midnight">
+                        Late Night / Midnight
+                      </option>
                       <option value="Early Morning (4 AM - 6 AM)">
                         Early Morning (4 AM - 6 AM)
                       </option>
-                      <option value="Always / All Hours">Always / All Hours</option>
+                      <option value="Always / All Hours">
+                        Always / All Hours
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -623,8 +619,9 @@ export default function ReportForm({
                     <span>Community Planning Proposal</span>
                   </div>
                   <p className="text-[11px] leading-relaxed text-muted-foreground">
-                    Suggest a positive change for this location, such as planting
-                    trees, creating a pocket park, or improving a public space.
+                    Suggest a positive change for this location, such as
+                    planting trees, creating a pocket park, or improving a
+                    public space.
                   </p>
                 </div>
               )}
@@ -646,7 +643,9 @@ export default function ReportForm({
                   type="text"
                   {...register("address")}
                   placeholder={
-                    geocoding ? "Detecting address..." : "e.g. Near Argwings Kodhek Rd junction"
+                    geocoding
+                      ? "Detecting address..."
+                      : "e.g. Near Argwings Kodhek Rd junction"
                   }
                 />
               </div>
@@ -662,8 +661,8 @@ export default function ReportForm({
                     selectedCategory === "security"
                       ? "Describe safety hazards (e.g., muggings, poor street lighting, suspicious activity)..."
                       : selectedCategory === "green_project"
-                      ? "Describe the positive change you want here..."
-                      : "Describe what's happening..."
+                        ? "Describe the positive change you want here..."
+                        : "Describe what's happening..."
                   }
                 />
               </div>
@@ -687,7 +686,8 @@ export default function ReportForm({
                 <strong className="text-foreground">
                   {lat.toFixed(5)}, {lng.toFixed(5)}
                 </strong>
-                . This location will be checked against your current GPS before submission.
+                . This location will be checked against your current GPS before
+                submission.
               </p>
             </div>
           )}
@@ -695,16 +695,22 @@ export default function ReportForm({
           {step === 4 && (
             <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
               <MapPin className="h-6 w-6 text-primary" />
-              <h3 className="font-semibold text-foreground text-sm">Verify Current Location</h3>
+              <h3 className="font-semibold text-foreground text-sm">
+                Verify Current Location
+              </h3>
               <p className="text-muted-foreground text-[11px] leading-relaxed">
-                We use a fresh GPS reading to compare where you are with the report pin. Your coordinates are used for verification, not shown publicly.
+                We use a fresh GPS reading to compare where you are with the
+                report pin. Your coordinates are used for verification, not
+                shown publicly.
               </p>
               <Button
                 type="button"
                 onClick={() => void verifyCurrentLocation()}
                 className="w-full mt-2"
               >
-                {residentLocation ? "Location Verified (Click Next)" : "Verify Current Location"}
+                {residentLocation
+                  ? "Location Verified (Click Next)"
+                  : "Verify Current Location"}
               </Button>
             </div>
           )}
@@ -714,67 +720,108 @@ export default function ReportForm({
               <div className="space-y-1.5">
                 <label className="font-semibold text-foreground flex items-center gap-1.5">
                   <Camera className="h-4 w-4 text-muted-foreground" />
-                  {requiresLivePhoto ? "Capture Live Evidence" : "Attach Photo"}
+                  Capture Live Evidence
                 </label>
-                {requiresLivePhoto ? (
-                  <div className="space-y-2">
-                    {!cameraPreview && !cameraOpen && (
-                      <Button type="button" onClick={() => void openCamera()} className="w-full">
-                        <Camera className="mr-2 h-4 w-4" /> Open Camera
+                <div className="space-y-3">
+                  <p className="text-[11px] text-muted-foreground">
+                    Capture the issue live, then capture it again from another
+                    angle to confirm the evidence.
+                  </p>
+                  {!cameraPreview && !cameraOpen && (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setCaptureStage("first");
+                        void openCamera();
+                      }}
+                      className="w-full"
+                    >
+                      <Camera className="mr-2 h-4 w-4" /> Open Camera
+                    </Button>
+                  )}
+                  {cameraOpen && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-foreground">
+                        {captureStage === "first"
+                          ? "First angle"
+                          : "Second angle"}
+                      </p>
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="aspect-video w-full rounded-lg bg-black object-cover"
+                      />
+                      <Button
+                        type="button"
+                        onClick={capturePhoto}
+                        className="w-full"
+                      >
+                        Capture{" "}
+                        {captureStage === "first"
+                          ? "First Angle"
+                          : "Second Angle"}
                       </Button>
-                    )}
-                    {cameraOpen && (
-                      <div className="space-y-2">
-                        <video
-                          ref={videoRef}
-                          autoPlay
-                          playsInline
-                          muted
-                          className="aspect-video w-full rounded-lg bg-black object-cover"
-                        />
-                        <Button type="button" onClick={capturePhoto} className="w-full">
-                          Capture
-                        </Button>
-                      </div>
-                    )}
-                    {cameraPreview && (
-                      <div className="space-y-2">
-                        <img
-                          src={cameraPreview}
-                          alt="Camera preview"
-                          className="aspect-video w-full rounded-lg object-cover"
-                        />
-                        <div className="flex gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={retakePhoto}
-                            className="w-1/2"
-                          >
-                            Retake
-                          </Button>
-                          <Button
-                            type="button"
-                            onClick={() => setServerError(null)}
-                            className="w-1/2"
-                          >
-                            Confirm
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                    <p className="text-[11px] text-muted-foreground">
-                      Gallery upload is unavailable for this category.
+                    </div>
+                  )}
+                  {cameraPreview && !cameraOpen && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-foreground">
+                        First angle captured
+                      </p>
+                      <img
+                        src={cameraPreview}
+                        alt="First live evidence angle"
+                        className="aspect-video w-full rounded-lg object-cover"
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          setCaptureStage("second");
+                          void openCamera();
+                        }}
+                        className="w-full"
+                      >
+                        <Camera className="mr-2 h-4 w-4" /> Recapture From
+                        Another Angle
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => retakePhoto("first")}
+                        className="w-full"
+                      >
+                        Retake First Angle
+                      </Button>
+                    </div>
+                  )}
+                  {secondCameraPreview && !cameraOpen && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-foreground">
+                        Second angle captured
+                      </p>
+                      <img
+                        src={secondCameraPreview}
+                        alt="Second live evidence angle"
+                        className="aspect-video w-full rounded-lg object-cover"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => retakePhoto("second")}
+                        className="w-full"
+                      >
+                        Recapture Second Angle
+                      </Button>
+                    </div>
+                  )}
+                  {cameraPreview && secondCameraPreview && !cameraOpen && (
+                    <p className="rounded-lg bg-primary/10 p-2 text-[11px] font-medium text-primary">
+                      Both live evidence angles confirmed.
                     </p>
-                  </div>
-                ) : (
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoChange}
-                    className="cursor-pointer"
-                  />
-                )}
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -806,9 +853,14 @@ export default function ReportForm({
 
           {step === 6 && (
             <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
-              <h3 className="font-semibold text-foreground text-sm">Privacy Notice</h3>
+              <h3 className="font-semibold text-foreground text-sm">
+                Privacy Notice
+              </h3>
               <p className="text-muted-foreground text-[11px] leading-relaxed">
-                Your identity remains private. Authorized trust and safety systems use verification, location, and evidence metadata to assess the report. The public sees the report and its trust state, not your phone, email, resident ID, or device ID.
+                Your identity remains private. Authorized trust and safety
+                systems use verification, location, and evidence metadata to
+                assess the report. The public sees the report and its trust
+                state, not your phone, email, resident ID, or device ID.
               </p>
               <label className="flex items-start gap-2 text-foreground cursor-pointer pt-2">
                 <input
@@ -826,7 +878,9 @@ export default function ReportForm({
 
           {step === 7 && (
             <div className="space-y-2 rounded-xl border border-border bg-muted/40 p-4 text-[11px]">
-              <h3 className="font-semibold text-foreground text-sm mb-2">Review Report</h3>
+              <h3 className="font-semibold text-foreground text-sm mb-2">
+                Review Report
+              </h3>
               <p>
                 <strong>Category:</strong> {CATEGORY_LABELS[selectedCategory]}
               </p>
@@ -834,7 +888,10 @@ export default function ReportForm({
                 <strong>Description:</strong> {watch("description")}
               </p>
               <p>
-                <strong>Evidence:</strong> {watch("photoBase64") ? "Attached" : "None"}
+                <strong>Evidence:</strong>{" "}
+                {watch("photoBase64") && watch("photoBase64Second")
+                  ? "Two live angles confirmed"
+                  : "Incomplete"}
               </p>
               <p>
                 <strong>Location:</strong> {lat.toFixed(5)}, {lng.toFixed(5)}
@@ -846,7 +903,9 @@ export default function ReportForm({
             <Button
               type="button"
               variant="outline"
-              onClick={() => (step === 1 ? onClose() : setStep((current) => current - 1))}
+              onClick={() =>
+                step === 1 ? onClose() : setStep((current) => current - 1)
+              }
               className="w-1/2"
             >
               {step === 1 ? "Cancel" : "Back"}
@@ -856,7 +915,8 @@ export default function ReportForm({
               <Button type="submit" disabled={submitting} className="w-1/2">
                 {submitting ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                    Submitting...
                   </>
                 ) : (
                   "Submit Report"

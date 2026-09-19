@@ -10,17 +10,17 @@ export default function AboutSection() {
         </div>
 
         <p className="text-sm text-muted-foreground leading-relaxed">
-          KiliPlanner is a civic infrastructure platform designed for
-          Kilimani Ward. It connects residents, planners, and local
-          officials by making it easier to report, monitor, and follow up
-          on issues affecting the community.
+          KiliPlanner is a civic infrastructure platform designed for Kilimani
+          Ward. It connects residents, planners, and local officials by making
+          it easier to report, monitor, and follow up on issues affecting the
+          community.
         </p>
 
         <p className="text-sm text-muted-foreground leading-relaxed">
           Residents can report problems such as water disruptions, sewage
           issues, waste accumulation, pollution, damaged roads, and
-          encroachment. Reports are mapped to their locations, shared with
-          the community, and can be supported by other residents through
+          encroachment. Reports are mapped to their locations, shared with the
+          community, and can be supported by other residents through
           endorsements and comments.
         </p>
 
@@ -32,14 +32,19 @@ export default function AboutSection() {
           <ol className="list-decimal list-inside text-muted-foreground space-y-1.5">
             <li>
               Open{" "}
-              <span className="font-medium text-foreground">
-                Report Issue
-              </span>{" "}
+              <span className="font-medium text-foreground">Report Issue</span>{" "}
               from the navigation.
             </li>
-            <li>Select or pinpoint the exact location of the problem on the map.</li>
-            <li>Choose the appropriate issue category and describe the problem.</li>
-            <li>Optionally attach a photo or provide your contact details.</li>
+            <li>
+              Select or pinpoint the exact location of the problem on the map.
+            </li>
+            <li>
+              Choose the appropriate issue category and describe the problem.
+            </li>
+            <li>
+              Capture two live evidence angles and optionally provide your
+              contact details.
+            </li>
             <li>Review the location and submit your report.</li>
           </ol>
         </div>
