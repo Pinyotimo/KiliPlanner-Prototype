@@ -2,25 +2,29 @@ import React from 'react';
 import type { IssueStatus } from '../../types/issue';
 
 interface StatusBadgeProps {
-  status: IssueStatus | 'open' | 'in_progress' | 'resolved' | 'closed';
+  status: IssueStatus;
 }
 
 const statusStyles: Record<string, string> = {
-  open: 'bg-accent/30 text-accent-foreground border-accent/30',
-  in_progress: 'bg-primary/10 text-primary border-primary/30',
-  resolved: 'bg-primary/10 text-primary border-primary/30',
-  closed: 'bg-muted text-foreground border-border',
+  UNVERIFIED: 'bg-muted text-muted-foreground border-border',
+  UNDER_REVIEW: 'bg-muted text-muted-foreground border-border',
+  CORROBORATED: 'bg-accent/30 text-accent-foreground border-accent/30',
+  VERIFIED: 'bg-primary/10 text-primary border-primary/30',
+  RESOLVED: 'bg-primary/10 text-primary border-primary/30',
+  REJECTED: 'bg-muted text-foreground border-border',
 };
 
 const statusLabels: Record<string, string> = {
-  open: 'Open',
-  in_progress: 'In Progress',
-  resolved: 'Resolved',
-  closed: 'Closed',
+  UNVERIFIED: 'Community report — under verification',
+  UNDER_REVIEW: 'Under Review',
+  CORROBORATED: 'Corroborated infrastructure issue',
+  VERIFIED: '✓ Verified Infrastructure Issue',
+  RESOLVED: '✓ Resolved',
+  REJECTED: 'Rejected',
 };
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
-  const style = statusStyles[status] || statusStyles.open;
+  const style = statusStyles[status] || statusStyles.UNVERIFIED;
   const label = statusLabels[status] || status;
 
   return (

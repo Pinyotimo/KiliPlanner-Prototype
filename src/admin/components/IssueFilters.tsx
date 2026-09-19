@@ -19,6 +19,9 @@ const categories: IssueCategory[] = [
   "waste",
   "pollution",
   "road_damage",
+  "construction",
+  "land_planning",
+  "drainage",
   "encroachment",
   "green_project",
   "other",
@@ -53,6 +56,7 @@ export default function IssueFilters({
           ))}
         </select>
       </label>
+
       <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Status
         <select
@@ -64,9 +68,15 @@ export default function IssueFilters({
         >
           <option value="all">All statuses</option>
           <option value="open">Open</option>
+          <option value="UNVERIFIED">Under verification</option>
+          <option value="UNDER_REVIEW">Under review</option>
+          <option value="CORROBORATED">Corroborated</option>
+          <option value="VERIFIED">Verified</option>
           <option value="resolved">Resolved</option>
+          <option value="REJECTED">Rejected</option>
         </select>
       </label>
+
       <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Date
         <select
@@ -84,6 +94,7 @@ export default function IssueFilters({
           <option value="30d">Last 30 days</option>
         </select>
       </label>
+
       <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
         Sort
         <select

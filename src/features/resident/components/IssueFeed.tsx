@@ -2,7 +2,6 @@ import React, { useState, memo, useEffect, useMemo } from "react";
 import {
   ThumbsUp,
   MapPin,
-  User,
   Clock,
   Plus,
   Inbox,
@@ -18,6 +17,7 @@ import {
   X,
   Check,
   Camera,
+  BadgeCheck,
   Timer,
 } from "lucide-react";
 import type { Issue } from "../../../types/issue";
@@ -46,6 +46,18 @@ function getStatusConfig(statusKey?: string) {
   const status = statusKey?.toLowerCase().replace("-", "_") || "open";
 
   switch (status) {
+    case "unverified":
+      return {
+        color: "bg-muted text-muted-foreground border-border",
+        icon: <Clock3 className="h-3 w-3 shrink-0 text-accent-foreground" />,
+        label: "Community report — under verification",
+      };
+    case "under_review":
+      return { color: "bg-muted text-muted-foreground border-border", icon: <AlertCircle className="h-3 w-3 shrink-0" />, label: "Under Review" };
+    case "corroborated":
+      return { color: "bg-accent/10 text-accent-foreground border-accent/30", icon: <CheckCircle2 className="h-3 w-3 shrink-0" />, label: "Corroborated infrastructure issue" };
+    case "verified":
+      return { color: "bg-primary/10 text-primary border-primary/30", icon: <CheckCircle2 className="h-3 w-3 shrink-0" />, label: "✓ Verified Infrastructure Issue" };
     case "resolved":
     case "fixed":
       return {
@@ -53,24 +65,14 @@ function getStatusConfig(statusKey?: string) {
         icon: (
           <CheckCircle2 className="h-3 w-3 shrink-0 text-muted-foreground" />
         ),
-        label: "Resolved",
+        label: "✓ Resolved",
       };
-    case "in_progress":
-    case "under_review":
-      return {
-        color: "bg-primary/10 text-primary dark:text-primary border-primary/30",
-        icon: (
-          <AlertCircle className="h-3 w-3 shrink-0 text-primary animate-pulse" />
-        ),
-        label: "In Progress",
-      };
-    case "closed":
     case "rejected":
       return {
         color:
           "bg-muted/10 text-foreground dark:text-muted-foreground border-border/30",
         icon: <XCircle className="h-3 w-3 shrink-0 text-muted-foreground" />,
-        label: "Closed",
+        label: "Rejected",
       };
     default:
       return {
@@ -112,8 +114,7 @@ const IssueCardItem = memo(
 
     const isSecurity =
       (issue.is_security_alert || issue.category === "security") &&
-      issue.status !== "resolved" &&
-      issue.status !== "closed";
+      issue.status !== "RESOLVED";
 
     const isGreenProject = issue.category === "green_project";
 
@@ -141,14 +142,10 @@ const IssueCardItem = memo(
     }, [issue]);
 
     useEffect(() => {
-      const deviceId = localStorage.getItem("kili_device_id");
       const myIds: string[] = JSON.parse(
         localStorage.getItem("kili_my_issue_ids") || "[]",
       );
-      if (
-        (deviceId && issue.device_id === deviceId) ||
-        myIds.includes(String(issue.id))
-      ) {
+      if (myIds.includes(String(issue.id))) {
         setIsOwner(true);
       }
     }, [issue]);
@@ -180,18 +177,13 @@ const IssueCardItem = memo(
 
     async function handleUpvote() {
       if (upvoting) return;
-      let deviceId = localStorage.getItem("kili_device_id");
-      if (!deviceId) {
-        deviceId = crypto.randomUUID();
-        localStorage.setItem("kili_device_id", deviceId);
-      }
-
       setUpvoting(true);
       const newUpvotes = displayUpvotes + 1;
       setLocalUpvotes(newUpvotes);
 
       try {
-        await upvoteIssue(issue.id, deviceId);
+        await upvoteIssue(issue.id);
+
         const EMAIL_GATEWAY_URL = "https://formspree.io/f/mzezzbav";
         fetch(EMAIL_GATEWAY_URL, {
           method: "POST",
@@ -208,6 +200,7 @@ const IssueCardItem = memo(
         }).catch((err) =>
           console.error("Escalation email failed to send", err),
         );
+
       } catch (err) {
         console.error("Failed to register vote:", err);
         setLocalUpvotes(displayUpvotes);
@@ -609,10 +602,10 @@ const IssueCardItem = memo(
             </span>
           </div>
 
-          {issue.reporter_name && (
-            <div className="flex max-w-full items-center gap-1 font-medium text-muted-foreground">
-              <User className="h-3 w-3" />
-              <span className="wrap-break-word">{issue.reporter_name}</span>
+          {issue.is_verified_resident && (
+            <div className="flex max-w-full items-center gap-1 font-medium text-primary">
+              <BadgeCheck className="h-3 w-3" />
+              <span>✓ Verified Resident</span>
             </div>
           )}
         </div>

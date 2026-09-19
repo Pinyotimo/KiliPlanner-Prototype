@@ -14,7 +14,6 @@ interface CommentSectionProps {
 export default function CommentSection({ issueId }: CommentSectionProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
-  const [authorName, setAuthorName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showComments, setShowComments] = useState(false);
@@ -52,7 +51,12 @@ export default function CommentSection({ issueId }: CommentSectionProps) {
           filter: `issue_id=eq.${issueId}`,
         },
         (payload) => {
-          setComments((prev) => [...prev, payload.new as Comment]);
+          const incoming = payload.new as Comment;
+          setComments((prev) =>
+            prev.some((comment) => comment.id === incoming.id)
+              ? prev
+              : [...prev, incoming],
+          );
         }
       )
       .subscribe();
@@ -69,16 +73,24 @@ export default function CommentSection({ issueId }: CommentSectionProps) {
 
     setSubmitting(true);
 
-    const { error } = await supabase.from("comments").insert({
-      issue_id: issueId,
-      author_name: authorName.trim() || "Resident",
-      content: newComment.trim(),
+    const { data, error } = await supabase.functions.invoke("add-comment", {
+      body: {
+        issueId,
+        content: newComment.trim(),
+      },
     });
 
     setSubmitting(false);
 
     if (!error) {
       setNewComment("");
+      if (data?.comment) {
+        setComments((current) =>
+          current.some((comment) => comment.id === data.comment.id)
+            ? current
+            : [...current, data.comment as Comment],
+        );
+      }
     } else {
       console.error("Error adding comment:", error.message);
     }
@@ -157,17 +169,10 @@ export default function CommentSection({ issueId }: CommentSectionProps) {
                 <div className="flex gap-2">
                   <Input
                     type="text"
-                    placeholder="Your Name (optional)"
-                    value={authorName}
-                    onChange={(e) => setAuthorName(e.target.value)}
-                    className="w-1/3 h-8 text-xs"
-                  />
-                  <Input
-                    type="text"
                     placeholder="Write a comment..."
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    className="w-2/3 h-8 text-xs"
+                    className="w-full h-8 text-xs"
                   />
                 </div>
                 <Button

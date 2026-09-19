@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   MapPin,
-  User,
   Clock,
   CheckCircle2,
   Clock3,
@@ -10,6 +9,7 @@ import {
   Building2,
   ChevronDown,
   Loader2,
+  BadgeCheck,
 } from "lucide-react";
 import type { Issue } from "../../../types/issue";
 import { CATEGORY_LABELS, CATEGORY_COLORS } from "../../../types/issue";
@@ -31,10 +31,12 @@ interface IssueCardProps {
 }
 
 const STATUS_OPTIONS = [
-  { value: "open", label: "Open" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "resolved", label: "Resolved" },
-  { value: "closed", label: "Closed" },
+  { value: "UNVERIFIED", label: "Unverified" },
+  { value: "UNDER_REVIEW", label: "Under Review" },
+  { value: "CORROBORATED", label: "Corroborated" },
+  { value: "VERIFIED", label: "Verified" },
+  { value: "RESOLVED", label: "Resolved" },
+  { value: "REJECTED", label: "Rejected" },
 ] as const;
 
 export default function IssueCard({
@@ -54,6 +56,18 @@ export default function IssueCard({
     const status = statusKey?.toLowerCase().replace("-", "_") || "open";
 
     switch (status) {
+      case "unverified":
+        return {
+          color: "bg-muted text-muted-foreground border-border",
+          icon: <Clock3 className="h-3.5 w-3.5 shrink-0 text-accent-foreground" />,
+          label: "Community report — under verification",
+        };
+      case "under_review":
+        return { color: "bg-muted text-muted-foreground border-border", icon: <AlertCircle className="h-3.5 w-3.5 shrink-0" />, label: "Under Review" };
+      case "corroborated":
+        return { color: "bg-accent/10 text-accent-foreground border-accent/30", icon: <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />, label: "Corroborated infrastructure issue" };
+      case "verified":
+        return { color: "bg-primary/10 text-primary border-primary/30", icon: <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />, label: "✓ Verified Infrastructure Issue" };
       case "resolved":
       case "fixed":
         return {
@@ -62,19 +76,8 @@ export default function IssueCard({
           icon: (
             <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           ),
-          label: "Resolved",
+          label: "✓ Resolved",
         };
-      case "in_progress":
-      case "under_review":
-        return {
-          color:
-            "bg-primary/10 text-primary dark:text-primary border-primary/30 ring-primary/20",
-          icon: (
-            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-primary animate-pulse" />
-          ),
-          label: "In Progress",
-        };
-      case "closed":
       case "rejected":
         return {
           color:
@@ -82,7 +85,7 @@ export default function IssueCard({
           icon: (
             <XCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           ),
-          label: "Closed",
+          label: "Rejected",
         };
       default:
         return {
@@ -221,10 +224,10 @@ export default function IssueCard({
         </div>
 
         <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-border/50 dark:border-border/50 pt-2 sm:pt-0">
-          {issue.reporter_name && (
-            <span className="flex items-center gap-1 font-medium">
-              <User className="h-3 w-3 text-muted-foreground" />
-              {issue.reporter_name}
+          {issue.is_verified_resident && (
+            <span className="flex items-center gap-1 font-medium text-primary">
+              <BadgeCheck className="h-3 w-3" />
+              <span>✓ Verified Resident</span>
             </span>
           )}
           <span className="flex items-center gap-1 text-muted-foreground">

@@ -1,15 +1,19 @@
 import { supabase } from "@/lib/supabaseClient";
-import { Issue } from "@/types/issue";
-import { IssueStatus } from "../types/official";
+import type { Issue } from "@/types/issue";
+import type { IssueStatus } from "@/types/issue";
 
 // Fetch issues assigned to a specific official or department
-export async function getAssignedIssues(officialId: string) {
-  const { data, error } = await supabase
+export async function getAssignedIssues(officialId?: string) {
+  let query = supabase
     .from("issues")
     .select("*")
-    // Temporarily commented out to show all issues for testing:
-    // .eq('assigned_to', officialId)
     .order("created_at", { ascending: false });
+
+  if (officialId) {
+    // query = query.eq("assigned_to", officialId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching assigned issues:", error);
@@ -32,6 +36,7 @@ export async function updateIssueStatus(
     .single();
 
   if (issueLookupError) throw issueLookupError;
+
   if (issue?.category === "green_project") {
     throw new Error(
       "Green Pin project statuses cannot be changed by officials.",
@@ -46,14 +51,15 @@ export async function updateIssueStatus(
       updated_at: new Date().toISOString(),
     })
     .eq("id", issueId)
-    .select();
+    .select()
+    .single();
 
   if (error) {
     console.error("Error updating issue status:", error.message, error.details);
     throw error;
   }
 
-  return data ? (data[0] as Issue) : null;
+  return data as Issue | null;
 }
 
 // Add an official update comment to the issue
@@ -73,7 +79,8 @@ export async function addOfficialComment(
         created_at: new Date().toISOString(),
       },
     ])
-    .select();
+    .select()
+    .single();
 
   if (error) {
     console.error(
@@ -84,5 +91,5 @@ export async function addOfficialComment(
     throw error;
   }
 
-  return data ? data[0] : null;
+  return data;
 }

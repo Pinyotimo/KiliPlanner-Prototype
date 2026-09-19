@@ -95,6 +95,24 @@ export const IssueStatusCard: React.FC<IssueStatusCardProps> = ({
         onSubmit={handleSubmit}
         className="space-y-3 pt-3 border-t border-border"
       >
+
+        <div>
+          <label className="block text-xs font-medium text-foreground mb-1">
+            Update Status
+          </label>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value as IssueStatus)}
+            className="w-full text-sm rounded-md border-input shadow-sm p-2 border focus:ring-1 focus:ring-primary"
+          >
+            <option value="UNDER_REVIEW">Under Review</option>
+            <option value="CORROBORATED">Corroborated</option>
+            <option value="VERIFIED">Verified</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+        </div>
+
         {!isGreenProject && (
           <div>
             <label className="block text-xs font-medium text-foreground mb-1">
@@ -113,6 +131,7 @@ export const IssueStatusCard: React.FC<IssueStatusCardProps> = ({
             </select>
           </div>
         )}
+
 
         <div>
           <label className="block text-xs font-medium text-foreground mb-1">

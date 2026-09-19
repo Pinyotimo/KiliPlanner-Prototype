@@ -29,7 +29,7 @@ import {
   KILIMANI_DEFAULT_ZOOM,
 } from "../data/kilimaniBoundary";
 import { isInsideKilimani } from "../lib/boundaryCheck";
-import { createCategoryDivIcon } from "../lib/leafletIcon";
+import { createIssueDivIcon } from "../lib/leafletIcon";
 import { CategoryIcon } from "./CategoryIcon";
 import type { Issue } from "../types/issue";
 import { CATEGORY_LABELS } from "../types/issue";
@@ -61,7 +61,7 @@ function InteractionHandler({
 }) {
   useMapEvents({
     click(e: LeafletMouseEvent) {
-      if (disabled) return; // Prevent background clicks while popup is active
+      if (disabled) return;
       onMapClick(e.latlng.lat, e.latlng.lng);
     },
   });
@@ -165,7 +165,7 @@ function DraftMarker({
               variant="outline"
               className="w-1/2 h-8 text-xs"
               onClick={(e) => {
-                e.stopPropagation(); // Stops click from hitting the map
+                e.stopPropagation();
                 onCancel();
               }}
             >
@@ -175,7 +175,7 @@ function DraftMarker({
               size="sm"
               className="w-1/2 h-8 text-xs"
               onClick={(e) => {
-                e.stopPropagation(); // Stops click from hitting the map
+                e.stopPropagation();
                 onConfirm();
               }}
             >
@@ -349,7 +349,8 @@ export default function MapView({
           {issues
             .filter(
               (issue) =>
-                issue.status !== "resolved" && issue.status !== "closed",
+                issue.status.toLowerCase() !== "resolved" &&
+                issue.status.toLowerCase() !== "closed",
             )
             .map((issue) => {
               const isSec =
@@ -359,7 +360,7 @@ export default function MapView({
                 <Marker
                   key={issue.id}
                   position={[issue.lat, issue.lng]}
-                  icon={createCategoryDivIcon(issue.category)}
+                  icon={createIssueDivIcon(issue.category, issue.status)}
                   eventHandlers={{
                     click: () => onIssueSelect?.(issue),
                   }}
@@ -390,13 +391,19 @@ export default function MapView({
                         </Badge>
                         <Badge
                           variant={
-                            issue.status === "resolved"
-                              ? "default"
-                              : "secondary"
+                            issue.status === "RESOLVED" ? "default" : "secondary"
                           }
                           className="capitalize text-[10px]"
                         >
-                          {issue.status}
+                          {issue.status === "UNVERIFIED"
+                            ? "Community report — under verification"
+                            : issue.status === "CORROBORATED"
+                              ? "Corroborated infrastructure issue"
+                              : issue.status === "VERIFIED"
+                                ? "✓ Verified Infrastructure Issue"
+                                : issue.status === "RESOLVED"
+                                  ? "✓ Resolved"
+                                  : issue.status.replace("_", " ")}
                         </Badge>
                       </div>
 
@@ -418,7 +425,7 @@ export default function MapView({
                         </p>
                       )}
 
-                        <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center justify-between pt-1">
                         <p className="text-muted-foreground text-[10px]">
                           {relativeTime(issue.created_at)}
                         </p>
@@ -426,7 +433,6 @@ export default function MapView({
                           type="button"
                           className="text-xs font-semibold text-primary hover:underline cursor-pointer"
                           onClick={() => {
-                            // This focuses the issue in the main community feed using URL params
                             window.location.search = `?issue=${issue.id}`;
                           }}
                         >

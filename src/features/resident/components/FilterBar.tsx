@@ -71,10 +71,12 @@ export default function FilterBar({
           </SelectTrigger>
           <SelectContent className="bg-background border-border text-foreground z-30">
             <SelectItem value="all">All</SelectItem>
-            <SelectItem value="open">Open</SelectItem>
-            <SelectItem value="in_progress">In Progress</SelectItem>
-            <SelectItem value="resolved">Resolved</SelectItem>
-            <SelectItem value="closed">Closed</SelectItem>
+              <SelectItem value="UNVERIFIED">Under verification</SelectItem>
+              <SelectItem value="UNDER_REVIEW">Under review</SelectItem>
+              <SelectItem value="CORROBORATED">Corroborated</SelectItem>
+              <SelectItem value="VERIFIED">Verified</SelectItem>
+              <SelectItem value="RESOLVED">Resolved</SelectItem>
+              <SelectItem value="REJECTED">Rejected</SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -5,11 +5,14 @@ export type IssueCategory =
   | "waste"
   | "pollution"
   | "road_damage"
+  | "construction"
+  | "land_planning"
+  | "drainage"
   | "encroachment"
   | "green_project"
   | "other";
 
-export type IssueStatus = "open" | "in_progress" | "resolved" | "closed";
+export type IssueStatus = "UNVERIFIED" | "UNDER_REVIEW" | "CORROBORATED" | "REJECTED" | "VERIFIED" | "RESOLVED";
 
 export interface Issue {
   id: string;
@@ -33,6 +36,7 @@ export interface Issue {
   unsafe_time?: string | null;
   device_id?: string | null;
   user_id?: string | null;
+  is_verified_resident?: boolean;
 }
 
 export const CATEGORY_LABELS: Record<IssueCategory, string> = {
@@ -42,6 +46,9 @@ export const CATEGORY_LABELS: Record<IssueCategory, string> = {
   waste: "Waste",
   pollution: "Environmental Pollution",
   road_damage: "Road Damage",
+  construction: "Construction",
+  land_planning: "Land/Planning",
+  drainage: "Drainage",
   encroachment: "Encroachment on Infrastructure",
   green_project: "Green Pin: Propose a Project",
   other: "Other",
@@ -54,6 +61,9 @@ export const CATEGORY_COLORS: Record<IssueCategory, string> = {
   waste: "var(--category-waste)",
   pollution: "var(--category-pollution)",
   road_damage: "var(--category-road)",
+  construction: "var(--category-road)",
+  land_planning: "var(--category-encroachment)",
+  drainage: "var(--category-water)",
   encroachment: "var(--category-encroachment)",
   green_project: "var(--category-green)",
   other: "var(--category-other)",

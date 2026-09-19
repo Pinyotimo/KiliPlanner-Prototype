@@ -8,8 +8,8 @@ import ActivityTimeline from '../components/ActivityTimeline';
 type AdminDashboardProps = { issues: Issue[] };
 
 export default function AdminDashboard({ issues }: AdminDashboardProps) {
-  const openCount = issues.filter((issue) => issue.status === 'open').length;
-  const resolvedCount = issues.filter((issue) => issue.status === 'resolved').length;
+  const openCount = issues.filter((issue) => ['UNVERIFIED', 'UNDER_REVIEW', 'CORROBORATED', 'VERIFIED'].includes(issue.status)).length;
+  const resolvedCount = issues.filter((issue) => issue.status === 'RESOLVED').length;
   const todayCount = issues.filter((issue) => new Date(issue.created_at).toDateString() === new Date().toDateString()).length;
   const categoryCounts = new Map<IssueCategory, number>();
   issues.forEach((issue) => categoryCounts.set(issue.category, (categoryCounts.get(issue.category) ?? 0) + 1));
