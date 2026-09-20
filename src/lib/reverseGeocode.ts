@@ -1,3 +1,5 @@
+import { NYAYO_GATES } from "../data/nyayoLandmarks";
+
 type Candidate = {
   name: string;
   distance: number;
@@ -5,7 +7,18 @@ type Candidate = {
   isGate: boolean;
 };
 
-const AREA_TYPES = ["pitch", "park", "field", "garden", "playground", "school", "grounds"];
+const AREA_TYPES = [
+  "pitch",
+  "park",
+  "field",
+  "garden",
+  "playground",
+  "school",
+  "grounds",
+  "court",
+  "residential",
+];
+
 const OVERPASS_ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.kumi.systems/api/interpreter",
@@ -14,55 +27,112 @@ const OVERPASS_ENDPOINTS = [
 /**
  * Calculates straight-line distance (in meters) between two coordinate points.
  */
-function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+function haversineDistance(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): number {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLng = ((lng2 - lng1) * Math.PI) / 180;
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
 /**
- * Races a promise against a wall-clock timeout so a stuck connection (below
- * the AbortController layer) can never hang the caller past `ms`.
+ * Races a promise against a wall-clock timeout so a stuck connection
+ * can never hang the caller past `ms`.
  */
 function withHardTimeout<T>(promise: Promise<T>, ms: number): Promise<T | null> {
   return new Promise((resolve) => {
     const timer = setTimeout(() => resolve(null), ms);
     promise.then(
-      (result) => { clearTimeout(timer); resolve(result); },
-      () => { clearTimeout(timer); resolve(null); },
+      (result) => {
+        clearTimeout(timer);
+        resolve(result);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(null);
+      }
     );
   });
 }
 
 /**
- * Reverse-geocodes lat/lng into a precise, human-readable landmark string.
- * Never returns raw coordinates — always a named place, gate, or road reference.
+ * Local fast-path lookup for known Nyayo Estate Gates & Landmarks.
+ * Guarantees zero network latency and exact accuracy when near estate entrances.
+ */
+function findNearestStaticGate(lat: number, lng: number): Candidate | null {
+  let closest: Candidate | null = null;
+  let minDistance = Infinity;
+
+  for (const gate of NYAYO_GATES) {
+    const dist = haversineDistance(
+      lat,
+      lng,
+      gate.position[0],
+      gate.position[1]
+    );
+
+    // If within 75 meters of a known Nyayo gate
+    if (dist <= 75 && dist < minDistance) {
+      minDistance = dist;
+      closest = {
+        name: gate.name,
+        distance: dist,
+        type: "gate",
+        isGate: true,
+      };
+    }
+  }
+
+  return closest;
+}
+
+/**
+ * Reverse-geocodes lat/lng into a precise, human-readable landmark string
+ * formatted specifically for Nyayo Estate (Courts, Gates, Phases, Roads).
  */
 export async function reverseGeocode(lat: number, lng: number): Promise<string> {
   try {
+    // 1. Instant check against local static gate dataset
+    const staticGate = findNearestStaticGate(lat, lng);
+
+    // 2. Fetch Nominatim context (Road name & Area)
     const { road, area, nomLandmark } = await fetchNominatimContext(lat, lng);
-    const best = await withHardTimeout(fetchNearestCandidate(lat, lng), 5000);
+
+    // 3. Fetch nearest OSM court / building / POI candidate via Overpass
+    const osmCandidate = await withHardTimeout(fetchNearestCandidate(lat, lng), 4000);
+
+    // Prioritize static gate if close by, otherwise use nearest OSM candidate
+    const bestCandidate = staticGate || osmCandidate;
 
     let locationString: string;
 
-    if (best) {
-      const positionPhrase = phraseFor(best);
-      locationString = road ? `along ${road}, ${positionPhrase}` : `${positionPhrase}, ${area}`;
+    if (bestCandidate) {
+      const positionPhrase = phraseFor(bestCandidate);
+      locationString = road
+        ? `${positionPhrase}, along ${road}`
+        : `${positionPhrase}, ${area}`;
     } else if (nomLandmark) {
-      locationString = road ? `along ${road}, near ${nomLandmark}` : `near ${nomLandmark}, ${area}`;
+      locationString = road
+        ? `near ${nomLandmark}, along ${road}`
+        : `near ${nomLandmark}, ${area}`;
     } else if (road) {
       locationString = `along ${road}, ${area}`;
     } else {
-      locationString = `${area} Ward`;
+      locationString = `${area}, Nyayo Estate`;
     }
 
     return sanitizeLocationString(locationString);
   } catch {
-    return "Kilimani Ward";
+    return "Nyayo Estate, Embakasi";
   }
 }
 
@@ -70,12 +140,17 @@ function phraseFor(c: Candidate): string {
   const roundedDist = Math.max(5, Math.round(c.distance / 5) * 5);
 
   if (c.isGate) {
-    return c.distance <= 20 ? `at the ${c.name}` : `${roundedDist}m from the ${c.name}`;
+    return c.distance <= 15
+      ? `at ${c.name}`
+      : `${roundedDist}m from ${c.name}`;
   }
-  if (AREA_TYPES.some((t) => c.type.includes(t)) && c.distance <= 40) {
+  if (
+    AREA_TYPES.some((t) => c.type.includes(t)) &&
+    c.distance <= 35
+  ) {
     return `inside ${c.name}`;
   }
-  if (c.distance <= 15) {
+  if (c.distance <= 10) {
     return `at ${c.name}`;
   }
   return `${roundedDist}m from ${c.name}`;
@@ -83,21 +158,21 @@ function phraseFor(c: Candidate): string {
 
 async function fetchNominatimContext(
   lat: number,
-  lng: number,
+  lng: number
 ): Promise<{ road: string; area: string; nomLandmark: string }> {
   let road = "";
-  let area = "Kilimani";
+  let area = "Nyayo Estate";
   let nomLandmark = "";
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 3500);
+  const timeout = setTimeout(() => controller.abort(), 3000);
 
   try {
     const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&extratags=1&namedetails=1`;
     const res = await fetch(url, {
       headers: {
         "Accept-Language": "en",
-        "User-Agent": "KiliPlanner-CivicApp/1.0 (kiliplan@kilimani.org)",
+        "User-Agent": "NyayoCommunityApp/1.0 (contact@nyayoestate.co.ke)",
       },
       signal: controller.signal,
     });
@@ -106,9 +181,20 @@ async function fetchNominatimContext(
       const data = await res.json();
       const addr = data.address || {};
       nomLandmark =
-        addr.amenity || addr.building || addr.shop || addr.office || addr.tourism || addr.leisure || addr.school || addr.hospital || "";
+        addr.amenity ||
+        addr.building ||
+        addr.shop ||
+        addr.office ||
+        addr.tourism ||
+        addr.leisure ||
+        addr.school ||
+        "";
       road = addr.road || addr.pedestrian || addr.path || "";
-      area = addr.suburb || addr.neighbourhood || addr.residential || "Kilimani";
+      area =
+        addr.residential ||
+        addr.suburb ||
+        addr.neighbourhood ||
+        "Nyayo Estate";
     }
   } catch {
     // fall through with defaults
@@ -120,31 +206,39 @@ async function fetchNominatimContext(
 }
 
 /**
- * Finds the nearest identifiable feature to the point — a named POI/building,
- * or a gate/entrance (paired with the nearest named compound it belongs to).
+ * Finds the nearest identifiable court, gate, or building in OpenStreetMap
  */
-async function fetchNearestCandidate(lat: number, lng: number): Promise<Candidate | null> {
-  // Pull named features AND gate/entrance nodes in one query.
+async function fetchNearestCandidate(
+  lat: number,
+  lng: number
+): Promise<Candidate | null> {
   const query = `[out:json][timeout:4];(
-    nwr(around:220,${lat},${lng})["name"];
-    node(around:220,${lat},${lng})["barrier"="gate"];
-    node(around:220,${lat},${lng})["entrance"];
+    nwr(around:200,${lat},${lng})["name"];
+    node(around:200,${lat},${lng})["barrier"="gate"];
+    node(around:200,${lat},${lng})["entrance"];
   );out body center;`;
   const encodedQuery = encodeURIComponent(query);
 
   for (const endpoint of OVERPASS_ENDPOINTS) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
 
     try {
-      const response = await fetch(`${endpoint}?data=${encodedQuery}`, { signal: controller.signal });
+      const response = await fetch(`${endpoint}?data=${encodedQuery}`, {
+        signal: controller.signal,
+      });
       if (!response.ok) continue;
 
       const data = await response.json();
       if (!data.elements?.length) continue;
 
       const named: Candidate[] = [];
-      const gates: { lat: number; lng: number; distance: number; ownName: string }[] = [];
+      const gates: {
+        lat: number;
+        lng: number;
+        distance: number;
+        ownName: string;
+      }[] = [];
 
       for (const el of data.elements) {
         const tags = el.tags || {};
@@ -156,19 +250,32 @@ async function fetchNearestCandidate(lat: number, lng: number): Promise<Candidat
         const isGateTag = tags.barrier === "gate" || !!tags.entrance;
 
         if (isGateTag) {
-          gates.push({ lat: elLat, lng: elLng, distance: dist, ownName: tags.name || "" });
-          if (!tags.name) continue; // unnamed gate handled via pairing below
+          gates.push({
+            lat: elLat,
+            lng: elLng,
+            distance: dist,
+            ownName: tags.name || "",
+          });
+          if (!tags.name) continue;
         }
 
         if (
           !tags.name ||
-          ["residential", "service", "tertiary", "unclassified"].includes(tags.highway)
+          ["residential", "service", "tertiary", "unclassified"].includes(
+            tags.highway
+          )
         ) {
           continue;
         }
 
         const typeTag =
-          tags.leisure || tags.amenity || tags.barrier || tags.building || tags.shop || tags.office || "poi";
+          tags.leisure ||
+          tags.amenity ||
+          tags.barrier ||
+          tags.building ||
+          tags.shop ||
+          tags.office ||
+          "court";
 
         named.push({
           name: tags.name,
@@ -178,17 +285,18 @@ async function fetchNearestCandidate(lat: number, lng: number): Promise<Candidat
         });
       }
 
-      // Pair unnamed gates with the nearest named compound they likely belong to.
+      // Pair unnamed gates with the nearest named Court or Phase compound
       for (const gate of gates) {
-        if (gate.ownName) continue; // already added as a named candidate above
+        if (gate.ownName) continue;
         let nearestNamed: { name: string; d: number } | null = null;
         for (const cand of named) {
-          const d = cand.distance; // approximation: reuse computed distances-from-user as proxy ranking
-          if (!nearestNamed || d < nearestNamed.d) nearestNamed = { name: cand.name, d };
+          const d = cand.distance;
+          if (!nearestNamed || d < nearestNamed.d)
+            nearestNamed = { name: cand.name, d };
         }
         if (nearestNamed && nearestNamed.d <= 80) {
           named.push({
-            name: `${nearestNamed.name} gate`,
+            name: `${nearestNamed.name} Gate`,
             distance: gate.distance,
             type: "gate",
             isGate: true,
@@ -211,12 +319,17 @@ async function fetchNearestCandidate(lat: number, lng: number): Promise<Candidat
 }
 
 /**
- * Strips any raw numeric coordinates and guarantees a readable text output.
+ * Guarantees a clean, readable location text output without raw coordinates or default text.
  */
 function sanitizeLocationString(str: string): string {
   const cleanStr = str
     .replace(/-?\d+\.\d+[\s,]* -?\d+\.\d+/g, "")
     .replace(/-?\d+\.\d+/g, "")
+    .replace(/Kilimani Ward/gi, "Nyayo Estate")
+    .replace(/Kilimani/gi, "Nyayo Estate")
     .trim();
-  return !cleanStr || cleanStr.length < 3 ? "Kilimani Ward" : cleanStr;
+
+  return !cleanStr || cleanStr.length < 3
+    ? "Nyayo Estate, Embakasi"
+    : cleanStr;
 }
