@@ -229,16 +229,16 @@ A Supabase Edge Function or narrowly scoped database RPC is the appropriate firs
 
 The frontend may provide hints and user feedback, but it must never be the source of truth for these fields or decisions:
 
-| Trust concern | Current client behavior | Required authoritative enforcement |
-| --- | --- | --- |
-| Verification status | No trusted implementation; UI can infer category/security state | Server/database-owned verification state and transition rules |
-| Resident reputation | No trusted implementation; browser device ID only | Auth-linked reputation ledger and server-calculated score |
-| Endorsement count | Direct client update of `issues.upvotes` | One endorsement per authorized identity, server-side count/ledger |
-| Report priority | Security items are sorted first in official UI | Server-calculated priority field and auditable rules |
-| Identity verification | Optional name/email and local UUID | Supabase Auth/profile verification and server-side identity checks |
-| Admin privileges | Planner session controls UI visibility | RLS roles/claims and server-side authorization |
-| Geofence validation | Turf polygon check in the browser | Database/RPC/Edge Function coordinate validation |
-| Rate limits | No enforcement found | Server-side per-identity/device/IP limits with auditability |
+| Trust concern         | Current client behavior                                         | Required authoritative enforcement                                 |
+| --------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Verification status   | No trusted implementation; UI can infer category/security state | Server/database-owned verification state and transition rules      |
+| Resident reputation   | No trusted implementation; browser device ID only               | Auth-linked reputation ledger and server-calculated score          |
+| Endorsement count     | Direct client update of`issues.upvotes`                       | One endorsement per authorized identity, server-side count/ledger  |
+| Report priority       | Security items are sorted first in official UI                  | Server-calculated priority field and auditable rules               |
+| Identity verification | Optional name/email and local UUID                              | Supabase Auth/profile verification and server-side identity checks |
+| Admin privileges      | Planner session controls UI visibility                          | RLS roles/claims and server-side authorization                     |
+| Geofence validation   | Turf polygon check in the browser                               | Database/RPC/Edge Function coordinate validation                   |
+| Rate limits           | No enforcement found                                            | Server-side per-identity/device/IP limits with auditability        |
 
 Additional trust-sensitive gaps found during the audit:
 

@@ -75,6 +75,14 @@ Officials dashboard at `/officials`:
    `sql/migrations/20260919_add_second_evidence_angle.sql` before submitting
    reports with two evidence angles.
 
+   For existing planner databases, also run
+   `sql/migrations/20260919_fix_planner_status_updates.sql` so authenticated
+   planner accounts can call the protected status-transition RPC.
+
+   To enable the full admin status control (unverify, under review, verify,
+   resolved, rejected, and corroborated), also run
+   `sql/migrations/20260919_allow_admin_status_actions.sql`.
+
 4. Enable Realtime:
 
    In Supabase, enable Realtime for the `issues` table under Database replication settings.
