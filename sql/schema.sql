@@ -118,9 +118,11 @@ as $$
 declare
   current_report public.issues;
   previous_state text;
+  actor_role text;
   allowed boolean := false;
 begin
-  if coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') not in ('admin', 'official', 'contractor') then
+  actor_role := coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '');
+  if actor_role not in ('admin', 'official', 'contractor') then
     raise exception 'Insufficient role for report state transition';
   end if;
 
@@ -128,11 +130,15 @@ begin
   if current_report.id is null then raise exception 'Report not found'; end if;
   previous_state := current_report.status;
 
-  allowed :=
-    (current_report.status = 'UNVERIFIED' and next_state in ('UNDER_REVIEW', 'REJECTED'))
-    or (current_report.status = 'UNDER_REVIEW' and next_state in ('CORROBORATED', 'REJECTED'))
-    or (current_report.status = 'CORROBORATED' and next_state in ('VERIFIED', 'REJECTED'))
-    or (current_report.status = 'VERIFIED' and next_state = 'RESOLVED');
+  allowed := actor_role = 'admin' and next_state in
+    ('UNVERIFIED', 'UNDER_REVIEW', 'CORROBORATED', 'VERIFIED', 'RESOLVED', 'REJECTED');
+  if not allowed then
+    allowed :=
+      (current_report.status = 'UNVERIFIED' and next_state in ('UNDER_REVIEW', 'REJECTED'))
+      or (current_report.status = 'UNDER_REVIEW' and next_state in ('CORROBORATED', 'REJECTED'))
+      or (current_report.status = 'CORROBORATED' and next_state in ('VERIFIED', 'REJECTED'))
+      or (current_report.status = 'VERIFIED' and next_state = 'RESOLVED');
+  end if;
   if not allowed then raise exception 'Invalid report state transition'; end if;
 
   update public.issues
@@ -145,6 +151,8 @@ begin
   return current_report;
 end;
 $$;
+revoke execute on function public.transition_report_state(uuid, text, text) from public, anon;
+grant execute on function public.transition_report_state(uuid, text, text) to authenticated;
 insert into storage.buckets (id, name, public)
 values ('report-evidence', 'report-evidence', false)
 on conflict (id) do nothing;

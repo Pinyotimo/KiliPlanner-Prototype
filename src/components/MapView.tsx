@@ -24,11 +24,11 @@ import {
   X,
 } from "lucide-react";
 import {
-  kilimaniBoundary,
-  KILIMANI_CENTER,
-  KILIMANI_DEFAULT_ZOOM,
-} from "../data/kilimaniBoundary";
-import { isInsideKilimani } from "../lib/boundaryCheck";
+  nyayoEstateBoundary,
+  NYAYO_CENTER,
+  NYAYO_DEFAULT_ZOOM,
+} from "../data/nyayoEstateBoundary";
+import { isInsideNyayoEstate } from "../lib/boundaryCheck";
 import { createIssueDivIcon } from "../lib/leafletIcon";
 import { CategoryIcon } from "./CategoryIcon";
 import type { Issue } from "../types/issue";
@@ -46,12 +46,11 @@ interface MapViewProps {
   selectedIssueId?: string;
 }
 
-const KILIMANI_BOUNDS: LatLngBoundsExpression = [
-  [-1.305, 36.77],
-  [-1.275, 36.81],
+// Bounding box approximate for Nyayo Estate, Embakasi
+const NYAYO_BOUNDS: LatLngBoundsExpression = [
+  [-1.322, 36.895], // South-West
+  [-1.300, 36.925], // North-East
 ];
-
-// 1. Interaction Handler (Ignores map clicks if a draft pin is already open)
 function InteractionHandler({
   onMapClick,
   disabled,
@@ -68,7 +67,6 @@ function InteractionHandler({
   return null;
 }
 
-// 2. Draggable Marker with Error Handling and Click Protection
 function DraftMarker({
   position,
   onDragEnd,
@@ -132,10 +130,10 @@ function DraftMarker({
         dragend: (e) => {
           const marker = e.target;
           const pos = marker.getLatLng();
-          if (isInsideKilimani(pos.lat, pos.lng)) {
+          if (isInsideNyayoEstate(pos.lat, pos.lng)) {
             onDragEnd(pos.lat, pos.lng);
           } else {
-            alert("Please keep the pin inside Kilimani Ward.");
+            alert("Please keep the pin inside Nyayo Estate.");
             onDragEnd(position[0], position[1]);
           }
         },
@@ -210,10 +208,10 @@ function LocationButton({
   useEffect(() => {
     function handleLocationFound(e: any) {
       setLocating(false);
-      if (isInsideKilimani(e.latlng.lat, e.latlng.lng)) {
+      if (isInsideNyayoEstate(e.latlng.lat, e.latlng.lng)) {
         onLocationFound(e.latlng.lat, e.latlng.lng);
       } else {
-        alert("Your current GPS location is outside Kilimani Ward.");
+        alert("Your current GPS location is outside Nyayo Estate.");
       }
     }
 
@@ -297,10 +295,10 @@ export default function MapView({
   );
 
   function handleMapClick(lat: number, lng: number) {
-    if (isInsideKilimani(lat, lng)) {
+    if (isInsideNyayoEstate(lat, lng)) {
       setDraftLocation([lat, lng]);
     } else {
-      alert("Please pick a location inside Kilimani Ward.");
+      alert("Please pick a location inside Nyayo Estate.");
     }
   }
 
@@ -324,10 +322,10 @@ export default function MapView({
 
       <div className="relative w-full h-112.5 rounded-lg border border-border overflow-hidden">
         <MapContainer
-          center={KILIMANI_CENTER}
-          zoom={KILIMANI_DEFAULT_ZOOM}
+          center={NYAYO_CENTER}
+          zoom={NYAYO_DEFAULT_ZOOM}
           minZoom={14}
-          maxBounds={KILIMANI_BOUNDS}
+          maxBounds={NYAYO_BOUNDS}
           maxBoundsViscosity={1.0}
           className="map-container h-full w-full z-0 bg-background"
         >
@@ -337,7 +335,7 @@ export default function MapView({
           />
 
           <GeoJSON
-            data={kilimaniBoundary}
+            data={nyayoEstateBoundary}
             style={{
               color: "var(--primary)",
               weight: 2,

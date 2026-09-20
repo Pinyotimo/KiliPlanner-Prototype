@@ -20,6 +20,15 @@ export default function AdminIssueDetails({ issue }: { issue?: Issue }) {
     setPhotoError(false);
   }, [issue?.id, issue?.status]);
 
+  const availableStatuses: IssueStatus[] = [
+    "UNVERIFIED",
+    "UNDER_REVIEW",
+    "CORROBORATED",
+    "VERIFIED",
+    "RESOLVED",
+    "REJECTED",
+  ];
+
   async function updateStatus(nextStatus: Issue["status"]) {
     if (!issue || nextStatus === status) return;
     setSaving(true);
@@ -27,9 +36,10 @@ export default function AdminIssueDetails({ issue }: { issue?: Issue }) {
     const { error } = await updateAdminIssueStatus(issue.id, nextStatus);
     setSaving(false);
     if (error) {
-      setMessage(
-        "Unable to update the issue. Current Supabase RLS allows public inserts but not planner updates.",
-      );
+      const migrationHint = error.message.includes("Invalid report state transition")
+        ? " Run sql/migrations/20260919_allow_admin_status_actions.sql in Supabase SQL Editor, then sign out and back in."
+        : "";
+      setMessage(`Unable to update the issue: ${error.message}.${migrationHint}`);
       return;
     }
     setStatus(nextStatus);
@@ -156,11 +166,11 @@ export default function AdminIssueDetails({ issue }: { issue?: Issue }) {
               }
               className="mt-2 block w-full rounded-lg border border-input bg-card px-3 py-2 text-sm"
             >
-              <option value="UNDER_REVIEW">Under Review</option>
-              <option value="CORROBORATED">Corroborated</option>
-              <option value="VERIFIED">Verified</option>
-              <option value="RESOLVED">Resolved</option>
-              <option value="REJECTED">Rejected</option>
+              {availableStatuses.map((availableStatus) => (
+                <option key={availableStatus} value={availableStatus}>
+                  {availableStatus.replace(/_/g, " ")}
+                </option>
+              ))}
             </select>
           </label>
           {message && (
