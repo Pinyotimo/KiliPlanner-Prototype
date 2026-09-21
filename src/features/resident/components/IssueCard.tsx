@@ -1,270 +1,194 @@
-import { useState } from "react";
-import {
-  MapPin,
-  Clock,
-  CheckCircle2,
-  Clock3,
-  AlertCircle,
-  XCircle,
-  Building2,
-  ChevronDown,
-  Loader2,
-  BadgeCheck,
-} from "lucide-react";
+import React, { useState, useEffect, memo } from "react";
+import { ThumbsUp, MapPin, ShieldAlert, Pencil, Trash2, BadgeCheck, MoreHorizontal, Building2, Timer, Loader2 } from "lucide-react";
 import type { Issue } from "../../../types/issue";
-import { CATEGORY_LABELS, CATEGORY_COLORS } from "../../../types/issue";
-import { relativeTime } from "../../../lib/relativeTime";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardFooter,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { CATEGORY_LABELS } from "../../../types/issue";
+import { Button } from "../../../components/ui/button";
+import { deleteIssue } from "../lib/deleteIssue";
+import { editIssue } from "../lib/editIssue";
+import { upvoteIssue } from "../lib/upvoteIssue";
 import { CategoryIcon } from "../../../components/CategoryIcon";
 import CommentSection from "./CommentSection";
+import { getWasteSlaState, WASTE_SLA_HOURS } from "../lib/sla";
+import { getStatusConfig } from "../lib/statusConfig";
+import IssueEditForm from "./IssueEditForm";
 
 interface IssueCardProps {
   issue: Issue;
-  onStatusChange?: (issueId: string, newStatus: string) => Promise<void> | void;
-  isEditable?: boolean;
+  isTargeted: boolean;
+  onUpdate?: (issueId: string, updates: Partial<Issue>) => Promise<void>;
+  onDelete?: (issueId: string) => Promise<void>;
 }
 
-const STATUS_OPTIONS = [
-  { value: "UNVERIFIED", label: "Unverified" },
-  { value: "UNDER_REVIEW", label: "Under Review" },
-  { value: "CORROBORATED", label: "Corroborated" },
-  { value: "VERIFIED", label: "Verified" },
-  { value: "RESOLVED", label: "Resolved" },
-  { value: "REJECTED", label: "Rejected" },
-] as const;
+export const IssueCard = memo(({ issue, isTargeted, onUpdate, onDelete }: IssueCardProps) => {
+  const [upvoting, setUpvoting] = useState(false);
+  const [localUpvotes, setLocalUpvotes] = useState<number | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
-export default function IssueCard({
-  issue,
-  onStatusChange,
-  isEditable = false,
-}: IssueCardProps) {
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [currentStatus, setCurrentStatus] = useState<string>(issue.status);
+  const isSecurity = (issue.is_security_alert || issue.category === "security") && issue.status !== "RESOLVED";
+  const displayUpvotes = localUpvotes !== null ? localUpvotes : issue.upvotes || 1;
+  const statusConfig = getStatusConfig(issue.status);
+  const wasteSla = getWasteSlaState(issue, now);
+  const isWasteOverdue = wasteSla?.overdue === true;
 
-  const categoryColor =
-    CATEGORY_COLORS[issue.category] || "var(--category-other)";
-  const isGreenProject = issue.category === "green_project";
+  useEffect(() => {
+    if (!wasteSla || wasteSla.completed) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, [issue.category, issue.created_at, issue.status, wasteSla?.completed]);
 
-  // Dynamic status styling helper supporting normalized status keys
-  const getStatusBadge = (statusKey: string) => {
-    const status = statusKey?.toLowerCase().replace("-", "_") || "open";
+  useEffect(() => {
+    const myIds: string[] = JSON.parse(localStorage.getItem("kili_my_issue_ids") || "[]");
+    if (myIds.includes(String(issue.id))) setIsOwner(true);
+  }, [issue]);
 
-    switch (status) {
-      case "unverified":
-        return {
-          color: "bg-muted text-muted-foreground border-border",
-          icon: (
-            <Clock3 className="h-3.5 w-3.5 shrink-0 text-accent-foreground" />
-          ),
-          label: "Community report — under verification",
-        };
-      case "under_review":
-        return {
-          color: "bg-muted text-muted-foreground border-border",
-          icon: <AlertCircle className="h-3.5 w-3.5 shrink-0" />,
-          label: "Under Review",
-        };
-      case "corroborated":
-        return {
-          color: "bg-accent/10 text-accent-foreground border-accent/30",
-          icon: <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />,
-          label: "Corroborated infrastructure issue",
-        };
-      case "verified":
-        return {
-          color: "bg-primary/10 text-primary border-primary/30",
-          icon: <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />,
-          label: "✓ Verified Infrastructure Issue",
-        };
-      case "resolved":
-      case "fixed":
-        return {
-          color:
-            "bg-primary/10 text-primary dark:text-primary border-primary/30 ring-primary/20",
-          icon: (
-            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          ),
-          label: "✓ Resolved",
-        };
-      case "rejected":
-        return {
-          color:
-            "bg-muted/10 text-foreground dark:text-muted-foreground border-border/30 ring-ring/20",
-          icon: (
-            <XCircle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-          ),
-          label: "Rejected",
-        };
-      default:
-        return {
-          color:
-            "bg-accent/10 text-accent-foreground dark:text-accent-foreground border-accent/30 ring-ring/20",
-          icon: (
-            <Clock3 className="h-3.5 w-3.5 shrink-0 text-accent-foreground" />
-          ),
-          label: "Open",
-        };
-    }
-  };
-
-  const handleStatusSelect = async (newStatus: string) => {
-    if (newStatus === currentStatus || isUpdating) return;
-
-    setIsUpdating(true);
-    setCurrentStatus(newStatus);
-
+  async function handleUpvote() {
+    if (upvoting) return;
+    setUpvoting(true);
+    setLocalUpvotes(displayUpvotes + 1);
     try {
-      if (onStatusChange) {
-        await onStatusChange(issue.id, newStatus);
-      }
-    } catch (error) {
-      // Revert status on failure
-      setCurrentStatus(issue.status);
-      console.error("Failed to update status:", error);
+      await upvoteIssue(issue.id);
+      // Escalation logic here...
+    } catch (err) {
+      setLocalUpvotes(displayUpvotes);
     } finally {
-      setIsUpdating(false);
+      setUpvoting(false);
     }
-  };
+  }
 
-  const statusConfig = getStatusBadge(currentStatus);
+  async function handleSaveEdit(updates: Partial<Issue>) {
+    if (onUpdate) await onUpdate(issue.id, updates);
+    else await editIssue(issue.id, updates);
+    setIsEditing(false);
+    setShowMenu(false);
+  }
+
+  async function handleDelete() {
+    if (!window.confirm("Are you sure you want to delete this report?")) return;
+    if (onDelete) await onDelete(issue.id);
+    else await deleteIssue(issue.id);
+    const storedIds: string[] = JSON.parse(localStorage.getItem("kili_my_issue_ids") || "[]");
+    localStorage.setItem("kili_my_issue_ids", JSON.stringify(storedIds.filter((id) => id !== String(issue.id))));
+  }
 
   return (
-    <Card className="group overflow-hidden rounded-2xl border border-border dark:border-border/80 bg-card dark:bg-background/90 text-foreground dark:text-foreground shadow-sm hover:shadow-md transition-all duration-300">
-      {/* Top Bar: Category & Dynamic Interactive Status Selector */}
-      <CardHeader className="p-4 sm:p-5 pb-3 flex-row items-center justify-between space-y-0 gap-3 border-b border-border dark:border-border/60 bg-muted/50 dark:bg-background/30">
-        <Badge
-          variant="outline"
-          style={{
-            backgroundColor: `color-mix(in oklch, ${categoryColor} 12%, transparent)`,
-            color: categoryColor,
-            borderColor: `color-mix(in oklch, ${categoryColor} 28%, transparent)`,
-          }}
-          className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold tracking-wider uppercase rounded-lg transition-colors shrink-0 shadow-xs"
-        >
-          <CategoryIcon category={issue.category} className="h-3.5 w-3.5" />
-          <span>{CATEGORY_LABELS[issue.category] || issue.category}</span>
-        </Badge>
-
-        {/* Dynamic Status Display or Selector Dropdown */}
-        {!isGreenProject && (isEditable || onStatusChange) ? (
-          <div className="relative inline-flex items-center">
-            {isUpdating && (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground absolute left-2 z-10" />
-            )}
-            <select
-              value={currentStatus}
-              disabled={isUpdating}
-              onChange={(e) => handleStatusSelect(e.target.value)}
-              className={`appearance-none cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold pl-2.5 pr-7 py-1 rounded-full border shadow-2xs transition-all focus:outline-none focus:ring-2 ${
-                statusConfig.color
-              } ${isUpdating ? "opacity-60 cursor-not-allowed pl-7" : ""}`}
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option
-                  key={opt.value}
-                  value={opt.value}
-                  className="bg-card dark:bg-background text-foreground dark:text-foreground font-normal"
-                >
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="h-3 w-3 absolute right-2.5 pointer-events-none opacity-60" />
+    <article
+      id={`issue-${issue.id}`}
+      className={`bg-card rounded-2xl border p-5 shadow-sm transition-all duration-300 ${
+        isSecurity ? "border-destructive bg-destructive/5" :
+        isWasteOverdue ? "border-warning bg-warning/5" :
+        isTargeted ? "ring-2 ring-primary border-primary shadow-md scale-[1.01]" : "border-border hover:shadow-md"
+      }`}
+    >
+      {/* 1. Header (Social Media Style) */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0 border border-border/50">
+            <CategoryIcon category={issue.category} className="h-5 w-5 text-foreground/70" />
           </div>
-        ) : !isGreenProject ? (
-          <span
-            className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full border shadow-2xs transition-colors ${statusConfig.color}`}
-          >
-            {statusConfig.icon}
-            <span>{statusConfig.label}</span>
-          </span>
-        ) : null}
-      </CardHeader>
-
-      {/* Main Content Body */}
-      <CardContent className="p-4 sm:p-5 space-y-4">
-        {/* Issue Description */}
-        <p className="text-foreground dark:text-foreground text-sm sm:text-base leading-relaxed font-normal">
-          {issue.description}
-        </p>
-
-        {/* Official Department Update Banner */}
-        {issue.official_notes && (
-          <div className="rounded-xl bg-primary/10 dark:bg-primary/10 border border-primary/30 p-3.5 text-foreground dark:text-foreground text-xs space-y-1.5 shadow-2xs">
-            <div className="flex items-center gap-1.5 font-semibold text-primary dark:text-primary text-[11px] uppercase tracking-wide">
-              <Building2 className="h-3.5 w-3.5 shrink-0" />
-              <span>Official Department Update</span>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-sm">
+                {issue.is_verified_resident ? "Verified Resident" : "Community Member"}
+              </span>
+              {issue.is_verified_resident && <BadgeCheck className="h-4 w-4 text-primary" />}
             </div>
-            <p className="leading-relaxed text-foreground dark:text-muted-foreground">
-              {issue.official_notes}
-            </p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+              <span>{new Date(issue.created_at).toLocaleDateString("en-KE", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+              <span>•</span>
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md font-medium ${statusConfig.color}`}>
+                {statusConfig.icon} {statusConfig.label}
+              </span>
+            </div>
           </div>
-        )}
-
-        {/* Additional Sub-details */}
-        {issue.sub_detail && !issue.official_notes && (
-          <div className="text-foreground dark:text-muted-foreground text-xs leading-relaxed bg-muted/70 dark:bg-muted/40 px-3.5 py-2.5 rounded-xl border-l-3 border-primary">
-            {issue.sub_detail}
-          </div>
-        )}
-
-        {/* Attached Evidence Image */}
-        {issue.photo_base64 && (
-          <div className="relative rounded-xl overflow-hidden border border-border/80 dark:border-border bg-background max-h-96 group/photo">
-            <img
-              src={issue.photo_base64}
-              alt="Report evidence"
-              className="w-full h-full max-h-96 object-cover transition-transform duration-500 group-hover/photo:scale-[1.02]"
-              loading="lazy"
-            />
-          </div>
-        )}
-        {issue.photo_base64_second && (
-          <div className="relative rounded-xl overflow-hidden border border-border/80 dark:border-border bg-background max-h-96 group/photo">
-            <img
-              src={issue.photo_base64_second}
-              alt="Second report evidence angle"
-              className="w-full h-full max-h-96 object-cover transition-transform duration-500 group-hover/photo:scale-[1.02]"
-              loading="lazy"
-            />
-          </div>
-        )}
-      </CardContent>
-
-      {/* Footer Metadata */}
-      <CardFooter className="px-4 sm:px-5 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between text-[11px] text-muted-foreground dark:text-muted-foreground gap-2 border-t border-border dark:border-border/60 bg-muted/30 dark:bg-background/20">
-        <div className="flex items-center gap-1.5 font-medium text-foreground dark:text-muted-foreground truncate max-w-full">
-          <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
-          <span className="truncate">
-            {issue.address ||
-              `${issue.lat?.toFixed(4)}, ${issue.lng?.toFixed(4)}`}
-          </span>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto justify-between sm:justify-end border-t sm:border-0 border-border/50 dark:border-border/50 pt-2 sm:pt-0">
-          {issue.is_verified_resident && (
-            <span className="flex items-center gap-1 font-medium text-primary">
-              <BadgeCheck className="h-3 w-3" />
-              <span>✓ Verified Resident</span>
-            </span>
+        {isOwner && !isEditing && (
+          <div className="relative">
+            <button onClick={() => setShowMenu(!showMenu)} className="p-1.5 text-muted-foreground hover:bg-muted rounded-full transition-colors">
+              <MoreHorizontal className="h-5 w-5" />
+            </button>
+            {showMenu && (
+              <div className="absolute right-0 mt-1 w-32 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-10">
+                <button onClick={() => setIsEditing(true)} className="w-full text-left px-4 py-2 text-sm hover:bg-muted flex items-center gap-2">
+                  <Pencil className="h-3.5 w-3.5" /> Edit
+                </button>
+                <button onClick={handleDelete} className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-destructive/10 flex items-center gap-2">
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Security & SLA Banners */}
+      {isSecurity && (
+        <div className="flex items-center gap-2 bg-destructive text-destructive-foreground px-3 py-2 rounded-lg text-xs font-bold mb-3 animate-pulse">
+          <ShieldAlert className="h-4 w-4" />
+          <span>TOP PRIORITY SAFETY ALERT {issue.unsafe_time && `— Unsafe: ${issue.unsafe_time}`}</span>
+        </div>
+      )}
+      
+      {wasteSla && (
+         <div className={`mb-3 rounded-lg border px-3 py-2 ${isWasteOverdue ? "border-warning bg-warning/10" : "bg-muted/40"}`}>
+            <div className="flex justify-between text-xs font-semibold mb-1">
+              <span className="flex items-center gap-1"><Timer className="h-3.5 w-3.5"/> {WASTE_SLA_HOURS}h Resolution SLA</span>
+              <span>{wasteSla.label}</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-foreground/10 overflow-hidden">
+               <div className={`h-full rounded-full ${isWasteOverdue ? "bg-warning" : "bg-primary"}`} style={{ width: `${wasteSla.progressPercent}%` }} />
+            </div>
+         </div>
+      )}
+
+      {/* 2. Body Content */}
+      {isEditing ? (
+        <IssueEditForm issue={issue} onSave={handleSaveEdit} onCancel={() => setIsEditing(false)} />
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center gap-1 text-xs font-medium text-primary bg-primary/5 w-fit px-2 py-1 rounded-md mb-1">
+            <MapPin className="h-3.5 w-3.5" />
+            {issue.address || `${issue.lat.toFixed(4)}, ${issue.lng.toFixed(4)}`} {issue.sub_detail && `— ${issue.sub_detail}`}
+          </div>
+          
+          <p className="text-foreground text-[15px] leading-relaxed whitespace-pre-wrap">{issue.description}</p>
+          
+          {!isEditing && issue.photo_base64 && issue.photo_base64.length > 20 && (
+            <div className="mt-3 rounded-xl overflow-hidden border border-border/50">
+              <img src={issue.photo_base64} alt="Issue evidence" className="w-full max-h-[400px] object-cover" />
+            </div>
           )}
-          <span className="flex items-center gap-1 text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            {relativeTime(issue.created_at)}
-          </span>
-        </div>
-      </CardFooter>
 
-      {/* Integrated Comments Feed */}
-      <div className="p-4 sm:p-5 pt-3 border-t border-border dark:border-border/60 bg-muted/50 dark:bg-background/40">
+          {issue.official_notes && (
+            <div className="mt-3 rounded-lg bg-primary/5 border-l-4 border-primary p-3">
+              <div className="flex items-center gap-1.5 font-bold text-primary text-xs uppercase mb-1">
+                <Building2 className="h-3.5 w-3.5" /> Official Update
+              </div>
+              <p className="text-sm text-muted-foreground">{issue.official_notes}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3. Action Footer (Social Style) */}
+      <div className="mt-4 pt-3 border-t border-border/50">
+        <div className="flex items-center gap-4 mb-2">
+          <button
+            onClick={handleUpvote}
+            disabled={upvoting}
+            className={`flex items-center gap-1.5 text-sm font-medium transition-colors ${localUpvotes ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            {upvoting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ThumbsUp className={`h-5 w-5 ${localUpvotes ? "fill-primary" : ""}`} />}
+            {displayUpvotes}
+          </button>
+        </div>
         <CommentSection issueId={issue.id} />
       </div>
-    </Card>
+    </article>
   );
-}
+});
+
+IssueCard.displayName = "IssueCard";

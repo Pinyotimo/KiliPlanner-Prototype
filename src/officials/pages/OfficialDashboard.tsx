@@ -1,4 +1,15 @@
 import React, { useEffect, useState, useMemo } from "react";
+import { 
+  ShieldAlert, 
+  Layers, 
+  Clock3, 
+  CheckCircle2, 
+  AlertCircle, 
+  Bell, 
+  Inbox, 
+  ShieldCheck,
+  Filter
+} from "lucide-react";
 import { OfficialIssue, IssueStatus } from "../types/official";
 import { getAssignedIssues } from "../lib/officialQueries";
 import { updateOfficialIssueStatus } from "../lib/updateIssueStatus";
@@ -21,12 +32,8 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
   const [issues, setIssues] = useState<OfficialIssue[]>([]);
   const [filter, setFilter] = useState<string>("all");
   const [loading, setLoading] = useState<boolean>(true);
-  const [activeView, setActiveView] = useState<"issues" | "notifications">(
-    "issues",
-  );
-  const [newIssueNotifications, setNewIssueNotifications] = useState<
-    OfficialIssue[]
-  >([]);
+  const [activeView, setActiveView] = useState<"issues" | "notifications">("issues");
+  const [newIssueNotifications, setNewIssueNotifications] = useState<OfficialIssue[]>([]);
 
   useEffect(() => {
     const storedIds = new Set(getOfficialNotificationIds());
@@ -161,7 +168,6 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
     }
   };
 
-  // Filter and sort issues so security alerts are ALWAYS prioritized at the top
   const sortedAndFilteredIssues = useMemo(() => {
     const filtered = issues.filter((issue) => {
       if (filter === "all") return true;
@@ -190,43 +196,51 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
   ).length;
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
-            Official Workstation
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Manage and resolve issues assigned to your department.
-          </p>
+    <div className="max-w-6xl mx-auto p-4 sm:p-6 space-y-6 pb-24">
+      {/* Executive Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-6 rounded-2xl shadow-sm border border-border">
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
+            <ShieldCheck className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              Official Workstation
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+              Manage, triage, and resolve infrastructure reports assigned to your department.
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+
+        {/* View Toggle Tabs */}
+        <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-xl border border-border/60">
           <button
             type="button"
             onClick={() => setActiveView("issues")}
-            className={`rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition-all cursor-pointer ${
               activeView === "issues"
-                ? "bg-primary text-primary-foreground"
-                : "border border-border bg-card text-muted-foreground hover:bg-muted"
+                ? "bg-background text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Issues
+            <Layers className="h-4 w-4" />
+            <span>Issues ({issues.length})</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveView("notifications")}
-            className={`relative rounded-md px-3 py-2 text-xs font-semibold transition-colors ${
+            className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition-all cursor-pointer relative ${
               activeView === "notifications"
-                ? "bg-primary text-primary-foreground"
-                : "border border-border bg-card text-muted-foreground hover:bg-muted"
+                ? "bg-background text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            Notifications
+            <Bell className="h-4 w-4" />
+            <span>Notifications</span>
             {newIssueNotifications.length > 0 && (
-              <span className="ml-2 rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
-                {newIssueNotifications.length > 9
-                  ? "9+"
-                  : newIssueNotifications.length}
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground animate-pulse">
+                {newIssueNotifications.length > 9 ? "9+" : newIssueNotifications.length}
               </span>
             )}
           </button>
@@ -234,67 +248,88 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
       </div>
 
       {activeView === "notifications" ? (
-        <NotificationList
-          issues={issues as unknown as Issue[]}
-          unreadIssueIds={newIssueNotifications.map((issue) => issue.id)}
-          onIssueSelect={(issueId) => {
-            setNewIssueNotifications((current) => {
-              const next = current.filter(
-                (issue) => String(issue.id) !== String(issueId),
-              );
-              setOfficialNotificationIds(next.map((issue) => String(issue.id)));
-              return next;
-            });
-            setActiveView("issues");
-          }}
-          onMarkAllRead={() => {
-            setNewIssueNotifications([]);
-            setOfficialNotificationIds([]);
-          }}
-          emptyMessage="No infrastructure reports have been submitted yet."
-        />
+        <div className="bg-card rounded-2xl border border-border p-5 shadow-sm">
+          <NotificationList
+            issues={issues as unknown as Issue[]}
+            unreadIssueIds={newIssueNotifications.map((issue) => issue.id)}
+            onIssueSelect={(issueId) => {
+              setNewIssueNotifications((current) => {
+                const next = current.filter(
+                  (issue) => String(issue.id) !== String(issueId),
+                );
+                setOfficialNotificationIds(next.map((issue) => String(issue.id)));
+                return next;
+              });
+              setActiveView("issues");
+            }}
+            onMarkAllRead={() => {
+              setNewIssueNotifications([]);
+              setOfficialNotificationIds([]);
+            }}
+            emptyMessage="No infrastructure reports have been submitted yet."
+          />
+        </div>
       ) : (
         <>
           {/* Metrics Row */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="p-4 bg-card border rounded-lg shadow-sm">
-              <p className="text-xs text-muted-foreground font-medium">
-                Total Assigned
-              </p>
-              <p className="text-2xl font-semibold text-foreground">
-                {issues.length}
-              </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+            <div className="p-4 bg-card border border-border/80 rounded-xl shadow-xs flex items-center justify-between">
+              <div>
+                <p className="text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">Total Assigned</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground mt-1">{issues.length}</p>
+              </div>
+              <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
+                <Layers className="h-4 w-4" />
+              </div>
             </div>
-            <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg shadow-sm">
-              <p className="text-xs text-destructive font-bold uppercase tracking-wider">
-                🚨 Security Priority
-              </p>
-              <p className="text-2xl font-bold text-destructive">
-                {countSecurity}
-              </p>
+
+            <div className="p-4 bg-destructive/5 border border-destructive/30 rounded-xl shadow-xs flex items-center justify-between">
+              <div>
+                <p className="text-[11px] text-destructive font-bold uppercase tracking-wider">Security Alerts</p>
+                <p className="text-xl sm:text-2xl font-bold text-destructive mt-1">{countSecurity}</p>
+              </div>
+              <div className="h-9 w-9 rounded-lg bg-destructive/10 flex items-center justify-center text-destructive animate-pulse">
+                <ShieldAlert className="h-4 w-4" />
+              </div>
             </div>
-            <div className="p-4 bg-card border rounded-lg shadow-sm">
-              <p className="text-xs text-accent-foreground font-medium">Open</p>
-              <p className="text-2xl font-semibold text-accent-foreground">
-                {countByStatus("open")}
-              </p>
+
+            <div className="p-4 bg-card border border-border/80 rounded-xl shadow-xs flex items-center justify-between">
+              <div>
+                <p className="text-[11px] text-amber-500 font-semibold uppercase tracking-wider">Open Reports</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground mt-1">{countByStatus("open")}</p>
+              </div>
+              <div className="h-9 w-9 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
+                <Clock3 className="h-4 w-4" />
+              </div>
             </div>
-            <div className="p-4 bg-card border rounded-lg shadow-sm">
-              <p className="text-xs text-primary font-medium">In Progress</p>
-              <p className="text-2xl font-semibold text-primary">
-                {countByStatus("in_progress")}
-              </p>
+
+            <div className="p-4 bg-card border border-border/80 rounded-xl shadow-xs flex items-center justify-between">
+              <div>
+                <p className="text-[11px] text-blue-500 font-semibold uppercase tracking-wider">In Progress</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground mt-1">{countByStatus("in_progress")}</p>
+              </div>
+              <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-500">
+                <AlertCircle className="h-4 w-4" />
+              </div>
             </div>
-            <div className="p-4 bg-card border rounded-lg shadow-sm">
-              <p className="text-xs text-primary font-medium">Resolved</p>
-              <p className="text-2xl font-semibold text-primary">
-                {countByStatus("resolved")}
-              </p>
+
+            <div className="p-4 bg-card border border-border/80 rounded-xl shadow-xs flex items-center justify-between col-span-2 sm:col-span-1">
+              <div>
+                <p className="text-[11px] text-emerald-500 font-semibold uppercase tracking-wider">Resolved</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground mt-1">{countByStatus("resolved")}</p>
+              </div>
+              <div className="h-9 w-9 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                <CheckCircle2 className="h-4 w-4" />
+              </div>
             </div>
           </div>
 
-          {/* Filter Tabs */}
-          <div className="flex space-x-2 border-b border-border pb-2">
+          {/* Filter Bar Pills */}
+          <div className="bg-card border border-border rounded-2xl p-3 shadow-xs flex items-center gap-2 overflow-x-auto scrollbar-none">
+            <div className="flex items-center gap-1.5 text-muted-foreground font-semibold text-xs px-2 shrink-0">
+              <Filter className="h-3.5 w-3.5" />
+              <span>Filter Status:</span>
+            </div>
             {[
               "all",
               "security",
@@ -302,36 +337,44 @@ export const OfficialDashboard: React.FC<OfficialDashboardProps> = ({
               "in_progress",
               "resolved",
               "closed",
-            ].map((statusKey) => (
-              <button
-                key={statusKey}
-                onClick={() => setFilter(statusKey)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition-colors ${
-                  filter === statusKey
-                    ? statusKey === "security"
-                      ? "bg-destructive text-primary-foreground"
-                      : "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted"
-                }`}
-              >
-                {statusKey === "security"
-                  ? "🚨 Security Only"
-                  : statusKey.replace("_", " ")}
-              </button>
-            ))}
+            ].map((statusKey) => {
+              const isSelected = filter === statusKey;
+              const isSecTab = statusKey === "security";
+              return (
+                <button
+                  key={statusKey}
+                  type="button"
+                  onClick={() => setFilter(statusKey)}
+                  className={`px-3.5 py-1.5 text-xs font-semibold rounded-full capitalize transition-all shrink-0 cursor-pointer ${
+                    isSelected
+                      ? isSecTab
+                        ? "bg-destructive text-destructive-foreground shadow-sm scale-105"
+                        : "bg-primary text-primary-foreground shadow-sm scale-105"
+                      : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {isSecTab ? "🚨 Security Only" : statusKey.replace("_", " ")}
+                </button>
+              );
+            })}
           </div>
 
           {/* Main Issue Cards Grid */}
           {loading ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">
-              Loading assigned issues...
+            <div className="flex flex-col items-center justify-center py-20 bg-card rounded-2xl border border-border">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent mb-3" />
+              <p className="text-sm text-muted-foreground font-medium">Loading assigned issues...</p>
             </div>
           ) : sortedAndFilteredIssues.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">
-              No issues found matching this filter.
+            <div className="flex flex-col items-center justify-center text-center py-20 px-6 bg-card rounded-2xl border border-dashed border-border/80">
+              <div className="p-4 rounded-full bg-muted text-muted-foreground mb-3">
+                <Inbox className="h-8 w-8" />
+              </div>
+              <h3 className="font-semibold text-base mb-1">No matching reports found</h3>
+              <p className="text-xs text-muted-foreground">There are no reports matching your selected filter parameters.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {sortedAndFilteredIssues.map((issue) => (
                 <IssueStatusCard
                   key={issue.id}
