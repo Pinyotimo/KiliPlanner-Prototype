@@ -7,6 +7,7 @@ import {
   Popup,
   useMapEvents,
   useMap,
+  LayersControl,
 } from "react-leaflet";
 import L from "leaflet";
 import type {
@@ -22,6 +23,7 @@ import {
   MapPin,
   Check,
   X,
+  Compass,
 } from "lucide-react";
 import {
   nyayoEstateBoundary,
@@ -38,6 +40,7 @@ import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { reverseGeocode } from "../lib/reverseGeocode";
 import "leaflet/dist/leaflet.css";
+import { NYAYO_GATES } from "../data/nyayoLandmarks";
 
 interface MapViewProps {
   issues: Issue[];
@@ -46,11 +49,12 @@ interface MapViewProps {
   selectedIssueId?: string;
 }
 
-// Bounding box approximate for Nyayo Estate, Embakasi
+// Bounds covering the entire Nyayo Estate polygon
 const NYAYO_BOUNDS: LatLngBoundsExpression = [
-  [-1.322, 36.895], // South-West
-  [-1.300, 36.925], // North-East
+  [-1.322, 36.895],
+  [-1.300, 36.925],
 ];
+
 function InteractionHandler({
   onMapClick,
   disabled,
@@ -315,8 +319,8 @@ export default function MapView({
         <Info className="h-4 w-4 text-primary shrink-0" />
         <span>
           <strong className="text-foreground">Instructions:</strong> Click or
-          tap anywhere inside the highlighted boundary to drop a location pin.
-          Drag the pin to adjust, then confirm to report an issue.
+          tap anywhere inside the boundary to drop a pin. Gate markers (A, B, C, D) 
+          help you orient your position accurately.
         </span>
       </div>
 
@@ -329,21 +333,75 @@ export default function MapView({
           maxBoundsViscosity={1.0}
           className="map-container h-full w-full z-0 bg-background"
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+          <LayersControl position="topright">
+            <LayersControl.BaseLayer checked name="Street Map">
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+            </LayersControl.BaseLayer>
 
+            <LayersControl.BaseLayer name="Satellite">
+              <TileLayer
+                attribution="Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                maxNativeZoom={19}
+                maxZoom={19}
+              />
+            </LayersControl.BaseLayer>
+          </LayersControl>
+
+          {/* Main Nyayo Estate Boundary */}
           <GeoJSON
             data={nyayoEstateBoundary}
             style={{
               color: "var(--primary)",
               weight: 2,
               fillColor: "var(--primary)",
-              fillOpacity: 0.1,
+              fillOpacity: 0.12,
             }}
           />
 
+          {/* Key Access Gates Pins & Labels */}
+          {NYAYO_GATES.map((gate) => (
+            <Marker
+              key={gate.id}
+              position={gate.position}
+              icon={L.divIcon({
+                className: "bg-transparent border-none",
+                html: `
+                  <div class="flex items-center gap-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] px-2 py-0.5 rounded shadow-md border border-white whitespace-nowrap cursor-pointer transition-transform hover:scale-105">
+                    🚪 <span>${gate.name}</span>
+                  </div>
+                `,
+                iconSize: [85, 22],
+                iconAnchor: [42, 11],
+              })}
+            >
+              <Popup className="custom-popup">
+                <div className="p-1 text-xs space-y-1.5 min-w-44">
+                  <div className="flex items-center justify-between border-b border-border pb-1">
+                    <p className="font-bold text-foreground flex items-center gap-1">
+                      🚪 {gate.name}
+                    </p>
+                    <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-600 border-amber-300">
+                      Access Gate
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-snug">
+                    {gate.description}
+                  </p>
+                  <div className="pt-0.5">
+                    <span className="inline-block bg-muted px-1.5 py-0.5 text-[10px] rounded font-medium text-foreground">
+                      <strong>Serves:</strong> {gate.phasesServed}
+                    </span>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+
+          {/* Issue Pins */}
           {issues
             .filter(
               (issue) =>
