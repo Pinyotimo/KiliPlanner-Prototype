@@ -1,46 +1,29 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   MapContainer,
   TileLayer,
   GeoJSON,
   Marker,
   Popup,
-  useMapEvents,
-  useMap,
   LayersControl,
 } from "react-leaflet";
 import L from "leaflet";
-import type {
-  LeafletMouseEvent,
-  Marker as LeafletMarker,
-  LatLngBoundsExpression,
-} from "leaflet";
-import {
-  Locate,
-  Loader2,
-  Info,
-  ShieldAlert,
-  MapPin,
-  Check,
-  X,
-  Compass,
-} from "lucide-react";
-import {
-  nyayoEstateBoundary,
-  NYAYO_CENTER,
-  NYAYO_DEFAULT_ZOOM,
-} from "../data/nyayoEstateBoundary";
-import { isInsideNyayoEstate } from "../lib/boundaryCheck";
-import { createIssueDivIcon } from "../lib/leafletIcon";
-import { CategoryIcon } from "./CategoryIcon";
-import type { Issue } from "../types/issue";
-import { CATEGORY_LABELS } from "../types/issue";
-import { relativeTime } from "../lib/relativeTime";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
-import { reverseGeocode } from "../lib/reverseGeocode";
-import "leaflet/dist/leaflet.css";
+import type { LatLngBoundsExpression } from "leaflet";
+import { Info, MapPin } from "lucide-react";
+
+import { nyayoEstateBoundary, NYAYO_CENTER, NYAYO_DEFAULT_ZOOM } from "../data/nyayoEstateBoundary";
 import { NYAYO_GATES } from "../data/nyayoLandmarks";
+import { isInsideNyayoEstate } from "../lib/boundaryCheck";
+import type { Issue } from "../types/issue";
+import { Badge } from "./ui/badge";
+
+import { InteractionHandler } from "./map/InteractionHandler";
+import { DraftMarker } from "./map/DraftMarker";
+import { LocationButton } from "./map/LocationButton";
+import { FocusIssue, MapSizeObserver } from "./map/MapHelpers";
+import { IssueMarker } from "./map/IssueMarker";
+
+import "leaflet/dist/leaflet.css";
 
 interface MapViewProps {
   issues: Issue[];
@@ -49,244 +32,10 @@ interface MapViewProps {
   selectedIssueId?: string;
 }
 
-// Bounds covering the entire Nyayo Estate polygon
 const NYAYO_BOUNDS: LatLngBoundsExpression = [
   [-1.322, 36.895],
   [-1.300, 36.925],
 ];
-
-function InteractionHandler({
-  onMapClick,
-  disabled,
-}: {
-  onMapClick: (lat: number, lng: number) => void;
-  disabled: boolean;
-}) {
-  useMapEvents({
-    click(e: LeafletMouseEvent) {
-      if (disabled) return;
-      onMapClick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
-
-function DraftMarker({
-  position,
-  onDragEnd,
-  onConfirm,
-  onCancel,
-}: {
-  position: [number, number];
-  onDragEnd: (lat: number, lng: number) => void;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  const [address, setAddress] = useState<string>("Detecting street name...");
-  const markerRef = useRef<LeafletMarker | null>(null);
-
-  useEffect(() => {
-    let isMounted = true;
-    setAddress("Detecting street name...");
-
-    reverseGeocode(position[0], position[1])
-      .then((res) => {
-        if (isMounted) {
-          setAddress(res || "Address not found. You can still confirm.");
-        }
-      })
-      .catch((error) => {
-        console.error("Geocoding failed:", error);
-        if (isMounted) {
-          setAddress("Address not found. You can still confirm.");
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [position[0], position[1]]);
-
-  useEffect(() => {
-    if (markerRef.current) {
-      markerRef.current.openPopup();
-    }
-  }, [position]);
-
-  const draftIcon = L.divIcon({
-    className: "bg-transparent border-none",
-    html: `<div class="relative flex items-center justify-center w-8 h-8">
-            <div class="absolute w-6 h-6 bg-primary rounded-full animate-ping opacity-75"></div>
-            <div class="relative w-4 h-4 bg-primary border-2 border-primary-foreground rounded-full shadow-md"></div>
-           </div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-    popupAnchor: [0, -16],
-  });
-
-  return (
-    <Marker
-      position={position}
-      draggable={true}
-      icon={draftIcon}
-      ref={markerRef}
-      eventHandlers={{
-        dragend: (e) => {
-          const marker = e.target;
-          const pos = marker.getLatLng();
-          if (isInsideNyayoEstate(pos.lat, pos.lng)) {
-            onDragEnd(pos.lat, pos.lng);
-          } else {
-            alert("Please keep the pin inside Nyayo Estate.");
-            onDragEnd(position[0], position[1]);
-          }
-        },
-      }}
-    >
-      <Popup
-        closeButton={false}
-        closeOnClick={false}
-        autoClose={false}
-        className="custom-popup"
-      >
-        <div className="p-2 min-w-50 space-y-3">
-          <div className="text-center space-y-1.5">
-            <p className="text-xs font-bold text-foreground flex items-center justify-center gap-1">
-              <MapPin className="h-4 w-4 text-primary" /> Adjust Location
-            </p>
-            <p className="text-[11px] text-muted-foreground font-medium leading-tight">
-              {address}
-            </p>
-            <p className="text-[9px] text-muted-foreground italic bg-muted/50 py-1 rounded">
-              Drag the pulsing pin to fine-tune
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="w-1/2 h-8 text-xs"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCancel();
-              }}
-            >
-              <X className="h-3 w-3 mr-1" /> Cancel
-            </Button>
-            <Button
-              size="sm"
-              className="w-1/2 h-8 text-xs"
-              onClick={(e) => {
-                e.stopPropagation();
-                onConfirm();
-              }}
-            >
-              <Check className="h-3 w-3 mr-1" /> Confirm
-            </Button>
-          </div>
-        </div>
-      </Popup>
-    </Marker>
-  );
-}
-
-function LocationButton({
-  onLocationFound,
-}: {
-  onLocationFound: (lat: number, lng: number) => void;
-}) {
-  const map = useMap();
-  const [locating, setLocating] = useState(false);
-
-  function handleLocate() {
-    setLocating(true);
-    map.locate({
-      setView: true,
-      maxZoom: 16,
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
-    });
-  }
-
-  useEffect(() => {
-    function handleLocationFound(e: any) {
-      setLocating(false);
-      if (isInsideNyayoEstate(e.latlng.lat, e.latlng.lng)) {
-        onLocationFound(e.latlng.lat, e.latlng.lng);
-      } else {
-        alert("Your current GPS location is outside Nyayo Estate.");
-      }
-    }
-
-    function handleLocationError(e: any) {
-      setLocating(false);
-      alert("Unable to retrieve high-accuracy GPS location: " + e.message);
-    }
-
-    map.on("locationfound", handleLocationFound);
-    map.on("locationerror", handleLocationError);
-
-    return () => {
-      map.off("locationfound", handleLocationFound);
-      map.off("locationerror", handleLocationError);
-    };
-  }, [map, onLocationFound]);
-
-  return (
-    <div className="leaflet-top leaflet-left top-20!">
-      <div className="leaflet-control leaflet-bar border-0 overflow-hidden rounded-md shadow-xs">
-        <button
-          type="button"
-          onClick={handleLocate}
-          disabled={locating}
-          title="Find my location"
-          className="bg-card hover:bg-accent text-card-foreground p-2 text-xs flex items-center justify-center w-8 h-8 cursor-pointer disabled:opacity-50 transition-colors border border-border rounded-md"
-        >
-          {locating ? (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          ) : (
-            <Locate className="h-4 w-4 text-foreground" />
-          )}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function FocusIssue({ issue }: { issue?: Issue }) {
-  const map = useMap();
-  useEffect(() => {
-    if (issue) {
-      map.setView([issue.lat, issue.lng], Math.max(map.getZoom(), 16), {
-        animate: true,
-      });
-    }
-  }, [issue, map]);
-  return null;
-}
-
-function MapSizeObserver() {
-  const map = useMap();
-
-  useEffect(() => {
-    const container = map.getContainer();
-    const resizeObserver = new ResizeObserver(() => {
-      map.invalidateSize({ animate: false });
-    });
-    resizeObserver.observe(container);
-    const frame = window.requestAnimationFrame(() =>
-      map.invalidateSize({ animate: false }),
-    );
-
-    return () => {
-      window.cancelAnimationFrame(frame);
-      resizeObserver.disconnect();
-    };
-  }, [map]);
-
-  return null;
-}
 
 export default function MapView({
   issues,
@@ -294,9 +43,7 @@ export default function MapView({
   onIssueSelect,
   selectedIssueId,
 }: MapViewProps) {
-  const [draftLocation, setDraftLocation] = useState<[number, number] | null>(
-    null,
-  );
+  const [draftLocation, setDraftLocation] = useState<[number, number] | null>(null);
 
   function handleMapClick(lat: number, lng: number) {
     if (isInsideNyayoEstate(lat, lng)) {
@@ -314,36 +61,36 @@ export default function MapView({
   }
 
   return (
-    <div className="flex flex-col gap-3 p-4 rounded-xl border border-border bg-card shadow-sm w-full h-full">
-      <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-lg border border-border">
+    <div className="flex flex-col gap-3 p-4 rounded-2xl border border-border/80 bg-card shadow-sm w-full h-full text-card-foreground">
+      {/* Banner */}
+      <div className="flex items-center gap-2.5 text-xs text-muted-foreground bg-muted/50 p-3 rounded-xl border border-border/60">
         <Info className="h-4 w-4 text-primary shrink-0" />
         <span>
-          <strong className="text-foreground">Instructions:</strong> Click or
-          tap anywhere inside the boundary to drop a pin. Gate markers (A, B, C, D) 
-          help you orient your position accurately.
+          <strong className="text-foreground">Instructions:</strong> Click or tap anywhere inside the boundary to drop a pin. Access gates help orient your position.
         </span>
       </div>
 
-      <div className="relative w-full h-112.5 rounded-lg border border-border overflow-hidden">
+      {/* Map Container */}
+      <div className="relative w-full h-[450px] rounded-xl border border-border/80 overflow-hidden shadow-inner">
         <MapContainer
           center={NYAYO_CENTER}
           zoom={NYAYO_DEFAULT_ZOOM}
           minZoom={14}
           maxBounds={NYAYO_BOUNDS}
           maxBoundsViscosity={1.0}
-          className="map-container h-full w-full z-0 bg-background"
+          className="h-full w-full z-0 bg-background"
         >
           <LayersControl position="topright">
             <LayersControl.BaseLayer checked name="Street Map">
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
             </LayersControl.BaseLayer>
 
             <LayersControl.BaseLayer name="Satellite">
               <TileLayer
-                attribution="Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+                attribution="Tiles &copy; Esri"
                 url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
                 maxNativeZoom={19}
                 maxZoom={19}
@@ -351,7 +98,7 @@ export default function MapView({
             </LayersControl.BaseLayer>
           </LayersControl>
 
-          {/* Main Nyayo Estate Boundary */}
+          {/* Nyayo Estate Boundary with CSS Variables */}
           <GeoJSON
             data={nyayoEstateBoundary}
             style={{
@@ -362,7 +109,7 @@ export default function MapView({
             }}
           />
 
-          {/* Key Access Gates Pins & Labels */}
+          {/* Gate Access Markers */}
           {NYAYO_GATES.map((gate) => (
             <Marker
               key={gate.id}
@@ -370,7 +117,7 @@ export default function MapView({
               icon={L.divIcon({
                 className: "bg-transparent border-none",
                 html: `
-                  <div class="flex items-center gap-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] px-2 py-0.5 rounded shadow-md border border-white whitespace-nowrap cursor-pointer transition-transform hover:scale-105">
+                  <div class="flex items-center gap-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] px-2 py-0.5 rounded-md shadow-md border border-background whitespace-nowrap cursor-pointer transition-transform hover:scale-105">
                     🚪 <span>${gate.name}</span>
                   </div>
                 `,
@@ -379,132 +126,30 @@ export default function MapView({
               })}
             >
               <Popup className="custom-popup">
-                <div className="p-1 text-xs space-y-1.5 min-w-44">
+                <div className="p-1 text-xs space-y-1.5 min-w-[180px] bg-card text-card-foreground">
                   <div className="flex items-center justify-between border-b border-border pb-1">
-                    <p className="font-bold text-foreground flex items-center gap-1">
-                      🚪 {gate.name}
-                    </p>
+                    <p className="font-bold text-foreground">🚪 {gate.name}</p>
                     <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-600 border-amber-300">
                       Access Gate
                     </Badge>
                   </div>
-                  <p className="text-[11px] text-muted-foreground leading-snug">
-                    {gate.description}
-                  </p>
-                  <div className="pt-0.5">
-                    <span className="inline-block bg-muted px-1.5 py-0.5 text-[10px] rounded font-medium text-foreground">
-                      <strong>Serves:</strong> {gate.phasesServed}
-                    </span>
-                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-snug">{gate.description}</p>
+                  <span className="inline-block bg-muted px-1.5 py-0.5 text-[10px] rounded font-medium text-foreground">
+                    <strong>Serves:</strong> {gate.phasesServed}
+                  </span>
                 </div>
               </Popup>
             </Marker>
           ))}
 
-          {/* Issue Pins */}
+          {/* Active Community Issues */}
           {issues
-            .filter(
-              (issue) =>
-                issue.status.toLowerCase() !== "resolved" &&
-                issue.status.toLowerCase() !== "closed",
-            )
-            .map((issue) => {
-              const isSec =
-                issue.is_security_alert || issue.category === "security";
+            .filter((i) => i.status.toLowerCase() !== "resolved" && i.status.toLowerCase() !== "closed")
+            .map((issue) => (
+              <IssueMarker key={issue.id} issue={issue} onIssueSelect={onIssueSelect} />
+            ))}
 
-              return (
-                <Marker
-                  key={issue.id}
-                  position={[issue.lat, issue.lng]}
-                  icon={createIssueDivIcon(issue.category, issue.status)}
-                  eventHandlers={{
-                    click: () => onIssueSelect?.(issue),
-                  }}
-                >
-                  <Popup className="custom-popup">
-                    <div className="p-1 space-y-2 max-w-xs text-xs text-card-foreground">
-                      {isSec && (
-                        <div className="bg-destructive text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded flex items-center justify-between">
-                          <span className="flex items-center gap-1">
-                            <ShieldAlert className="h-3 w-3" /> SECURITY ALERT
-                          </span>
-                          {issue.unsafe_time && (
-                            <span>{issue.unsafe_time}</span>
-                          )}
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-between gap-2">
-                        <Badge
-                          variant="outline"
-                          className="flex items-center gap-1 text-[10px] uppercase font-bold border-border bg-muted/50 text-foreground"
-                        >
-                          <CategoryIcon
-                            category={issue.category}
-                            className="h-3 w-3 text-primary"
-                          />
-                          {CATEGORY_LABELS[issue.category] || issue.category}
-                        </Badge>
-                        <Badge
-                          variant={
-                            issue.status === "RESOLVED" ? "default" : "secondary"
-                          }
-                          className="capitalize text-[10px]"
-                        >
-                          {issue.status === "UNVERIFIED"
-                            ? "Community report — under verification"
-                            : issue.status === "CORROBORATED"
-                              ? "Corroborated infrastructure issue"
-                              : issue.status === "VERIFIED"
-                                ? "✓ Verified Infrastructure Issue"
-                                : issue.status === "RESOLVED"
-                                  ? "✓ Resolved"
-                                  : issue.status.replace("_", " ")}
-                        </Badge>
-                      </div>
-
-                      <p className="font-medium text-foreground text-xs leading-snug">
-                        {issue.description}
-                      </p>
-
-                      {issue.photo_base64 && (
-                        <img
-                          src={issue.photo_base64}
-                          alt="Report attachment"
-                          className="w-full h-28 object-cover rounded-md border border-border bg-muted"
-                        />
-                      )}
-
-                      {issue.address && (
-                        <p className="text-muted-foreground text-[11px] flex items-center gap-1">
-                          <span>📍</span> {issue.address}
-                        </p>
-                      )}
-
-                      <div className="flex items-center justify-between pt-1">
-                        <p className="text-muted-foreground text-[10px]">
-                          {relativeTime(issue.created_at)}
-                        </p>
-                        <button
-                          type="button"
-                          className="text-xs font-semibold text-primary hover:underline cursor-pointer"
-                          onClick={() => {
-                            window.location.search = `?issue=${issue.id}`;
-                          }}
-                        >
-                          View in Feed & Endorse
-                        </button>
-                      </div>
-                    </div>
-                  </Popup>
-                </Marker>
-              );
-            })}
-
-          <InteractionHandler
-            onMapClick={handleMapClick}
-            disabled={draftLocation !== null}
-          />
+          <InteractionHandler onMapClick={handleMapClick} disabled={draftLocation !== null} />
 
           {draftLocation && (
             <DraftMarker
@@ -515,9 +160,7 @@ export default function MapView({
             />
           )}
 
-          <FocusIssue
-            issue={issues.find((issue) => issue.id === selectedIssueId)}
-          />
+          <FocusIssue issue={issues.find((i) => i.id === selectedIssueId)} />
           <MapSizeObserver />
           <LocationButton onLocationFound={handleMapClick} />
         </MapContainer>
