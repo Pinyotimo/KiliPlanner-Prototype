@@ -1,0 +1,156 @@
+/*
+ * Landing page motion and graphics.
+ *
+ * Everything here is ambient - continuous loops that run while the section is
+ * on screen. Scroll-triggered reveals use framer-motion instead, so they can
+ * be sequenced and interrupted cleanly.
+ *
+ * All motion is switched off under `prefers-reduced-motion`, which the
+ * browser reports as a user preference rather than a device capability.
+ */
+
+@keyframes lp-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(3%, -4%, 0) scale(1.08);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes lp-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes lp-float-slow {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(8px) rotate(1.2deg);
+  }
+}
+
+@keyframes lp-ping {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.55;
+  }
+  70% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes lp-grid {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 48px 48px;
+  }
+}
+
+@keyframes lp-sweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+
+.lp-orb {
+  animation: lp-drift 18s ease-in-out infinite;
+  will-change: transform;
+}
+
+.lp-orb-slow {
+  animation: lp-drift 26s ease-in-out infinite reverse;
+  will-change: transform;
+}
+
+.lp-float {
+  animation: lp-float 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.lp-float-slow {
+  animation: lp-float-slow 9s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* A pin's attention ring: expands and fades, like a radar ping. */
+.lp-ping {
+  transform-origin: center;
+  animation: lp-ping 2.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  will-change: transform, opacity;
+}
+
+.lp-ping-late {
+  animation-delay: 1.4s;
+}
+
+/* A fine grid that drifts, so large flat areas never look static. */
+.lp-grid {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--foreground) 7%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--foreground) 7%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 48px 48px;
+  animation: lp-grid 22s linear infinite;
+}
+
+/* The sheen that travels across a call to action. */
+.lp-sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in oklab, var(--primary-foreground) 35%, transparent) 50%,
+    transparent 80%
+  );
+  transform: translateX(-120%);
+  animation: lp-sweep 3.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-orb,
+  .lp-orb-slow,
+  .lp-float,
+  .lp-float-slow,
+  .lp-ping,
+  .lp-grid,
+  .lp-sweep::after {
+    animation: none !important;
+  }
+
+  /* The tailwind ping on the security chip: still, but still visible. */
+  .lp-page .animate-ping {
+    animation: none !important;
+  }
+}
