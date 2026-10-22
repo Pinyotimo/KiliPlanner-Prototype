@@ -4,6 +4,35 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
     <title>KiliPlanner — Kilimani Infrastructure Map</title>
+    <script>
+      // Apply the stored theme before first paint so the page never flashes
+      // the wrong palette. Kept in sync with src/theme/ThemeProvider.tsx.
+      (function () {
+        try {
+          var mode = localStorage.getItem("kiliplanner-theme-mode");
+          var accent = localStorage.getItem("kiliplanner-theme-accent");
+          var dark =
+            mode === "dark" ||
+            ((!mode || mode === "system") &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          var root = document.documentElement;
+          if (dark) root.classList.add("dark");
+          root.style.colorScheme = dark ? "dark" : "light";
+          root.dataset.theme = dark ? "dark" : "light";
+          root.dataset.accent =
+            accent === "ocean" ||
+            accent === "ember" ||
+            accent === "plum" ||
+            accent === "indigo" ||
+            accent === "slate" ||
+            accent === "moss"
+              ? accent
+              : "moss";
+        } catch (error) {
+          /* storage unavailable - the defaults in index.css apply */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
