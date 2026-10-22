@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { navigateToPlanner, usePlannerSession } from "../lib/plannerAccess";
+import { recordConsoleActivity } from "../lib/auditLog";
 
 export default function PlannerLogin() {
   const { session, authState } = usePlannerSession();
@@ -27,16 +28,32 @@ export default function PlannerLogin() {
     );
     setSubmitting(false);
     if (signInError) {
+      recordConsoleActivity({
+        type: "sign_in_failed",
+        summary: "Failed sign-in attempt",
+        detail: email.trim(),
+      });
       setError(
         "Unable to sign in. Check your email and password, then try again.",
       );
       return;
     }
     if (data.session?.user.app_metadata?.role !== "admin") {
+      recordConsoleActivity({
+        type: "sign_in_failed",
+        summary: "Sign-in refused - account is not a planner",
+        detail: email.trim(),
+      });
       setError(
         "Credentials accepted, but this account is not authorized for the planner console. An administrator must assign app_metadata.role=admin.",
       );
+      return;
     }
+    recordConsoleActivity({
+      type: "sign_in",
+      summary: "Signed in to the planner console",
+      detail: email.trim(),
+    });
   }
 
   return (
@@ -91,7 +108,7 @@ export default function PlannerLogin() {
           </button>
         </form>
         <a
-          href="/"
+          href="/app"
           className="mt-6 block text-center text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           Return to public map

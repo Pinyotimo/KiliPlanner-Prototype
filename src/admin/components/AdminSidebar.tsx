@@ -1,164 +1,299 @@
-import { useEffect, useState } from "react";
-import { navigateToPlanner, useLocation } from "../lib/plannerAccess";
+import { useEffect, useRef, useState } from "react";
+import {
+  BarChart3,
+  Bell,
+  FileText,
+  LayoutDashboard,
+  ListChecks,
+  Map,
+  Settings,
+  SquareKanban,
+  ChevronsLeft,
+  ChevronsRight,
+  Home,
+  ShieldCheck,
+  ScrollText,
+  Activity,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { navigateToPlanner, useRoute } from "../lib/plannerAccess";
+import { useMediaQuery } from "@/lib/useMediaQuery";
+import { cn } from "@/lib/utils";
 
-const links = [
-  ["Dashboard", "/planner"],
-  ["Live Map", "/planner/map"],
-  ["Issues", "/planner/issues"],
-  ["Analytics", "/planner/analytics"],
-  ["Notifications", "/planner/notifications"],
-  ["Reports", "/planner/reports"],
-  ["Settings", "/planner/settings"],
-] as const;
+type SidebarLink = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+};
+
+/**
+ * The console is grouped by what a planner is doing, not by route order, so
+ * the rail reads as a set of tasks rather than a list of pages.
+ */
+const linkGroups: { heading: string; links: SidebarLink[] }[] = [
+  {
+    heading: "Overview",
+    links: [{ label: "Dashboard", href: "/planner", icon: LayoutDashboard }],
+  },
+  {
+    heading: "Manage",
+    links: [
+      { label: "Live Map", href: "/planner/map", icon: Map },
+      { label: "Issues", href: "/planner/issues", icon: SquareKanban },
+      { label: "Status board", href: "/planner/status", icon: ListChecks },
+      { label: "Analytics", href: "/planner/analytics", icon: BarChart3 },
+    ],
+  },
+  {
+    heading: "Communications",
+    links: [
+      { label: "Notifications", href: "/planner/notifications", icon: Bell },
+      { label: "Reports", href: "/planner/reports", icon: FileText },
+    ],
+  },
+  {
+    heading: "Assurance",
+    links: [
+      { label: "Audit log", href: "/planner/audit", icon: ScrollText },
+      { label: "System health", href: "/planner/health", icon: Activity },
+    ],
+  },
+  {
+    heading: "Configuration",
+    links: [{ label: "Settings", href: "/planner/settings", icon: Settings }],
+  },
+];
+
+/** Offsites - the other surfaces of the platform, one hop away. */
+const offsiteLinks: { label: string; href: string; icon: LucideIcon }[] = [
+  { label: "Official desk", href: "/officials", icon: ShieldCheck },
+  { label: "Public map", href: "/app", icon: Map },
+  { label: "Landing page", href: "/", icon: Home },
+];
 
 type AdminSidebarProps = {
   mobileOpen: boolean;
   onMobileClose: () => void;
 };
 
-type IconName =
-  | "dashboard"
-  | "map"
-  | "issues"
-  | "analytics"
-  | "notifications"
-  | "reports"
-  | "settings";
-
-function Icon({ name }: { name: IconName }) {
-  const paths: Record<IconName, string> = {
-    dashboard: "M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 0h6v6h-6v-6Z",
-    map: "m3 6 6-3 6 3 6-3v14l-6 3-6-3-6 3V6Zm6-3v14m6-11v14",
-    issues: "M12 3 21 7.5v9L12 21l-9-4.5v-9L12 3Zm0 0v9m9-4.5-9 4.5-9-4.5",
-    analytics: "M4 19V5m0 14h16M8 16v-4m4 4V8m4 8V5",
-    notifications: "M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4",
-    reports: "M6 3h9l3 3v15H6V3Zm9 0v4h4M9 12h6m-6 4h6",
-    settings:
-      "M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Zm0-5v2m0 13v2m9-8h-2M5 12H3m15.36-6.36-1.42 1.42M7.06 16.94l-1.42 1.42m12.72 0-1.42-1.42M7.06 7.06 5.64 5.64",
-  };
-
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5 shrink-0"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d={paths[name]} />
-    </svg>
-  );
-}
-
-const icons: Record<(typeof links)[number][0], IconName> = {
-  Dashboard: "dashboard",
-  "Live Map": "map",
-  Issues: "issues",
-  Analytics: "analytics",
-  Notifications: "notifications",
-  Reports: "reports",
-  Settings: "settings",
-};
-
 export default function AdminSidebar({
   mobileOpen,
   onMobileClose,
 }: AdminSidebarProps) {
-  const pathname = useLocation();
+  const { pathname } = useRoute();
   const [collapsed, setCollapsed] = useState(false);
+  const asideRef = useRef<HTMLElement>(null);
+  const isDocked = useMediaQuery("(min-width: 1024px)");
+  const offCanvas = !isDocked && !mobileOpen;
+
+  // The collapsed rail is still on screen, so only the off-canvas drawer is
+  // taken out of the tab order.
+  useEffect(() => {
+    const node = asideRef.current;
+    if (!node) return;
+    if (offCanvas) node.setAttribute("inert", "");
+    else node.removeAttribute("inert");
+  }, [offCanvas]);
 
   useEffect(() => {
     if (!mobileOpen) return;
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onMobileClose();
+      if (event.key !== "Escape") return;
+      onMobileClose();
+      document
+        .querySelector<HTMLElement>('[aria-label="Open planner navigation"]')
+        ?.focus();
     }
     window.addEventListener("keydown", handleKeyDown);
+    asideRef.current?.querySelector<HTMLElement>("a, button")?.focus();
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [mobileOpen, onMobileClose]);
 
   return (
     <>
+      {/* Skip link. It lives outside the rail because the rail is transformed
+          off-canvas on small screens, and a transformed ancestor would drag a
+          fixed-position link off screen with it. */}
+      <a
+        href="#planner-content"
+        className="fixed left-3 top-3 z-[100] -translate-y-24 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-floating transition-transform focus:translate-y-0"
+      >
+        Skip to content
+      </a>
+
       {mobileOpen && (
         <button
           type="button"
-          className="fixed inset-0 z-30 bg-background/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-[2px] lg:hidden"
           onClick={onMobileClose}
           aria-label="Close planner navigation"
         />
       )}
+
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-[min(14rem,calc(100vw-1rem))] max-w-full shrink-0 flex-col overflow-y-auto bg-foreground text-primary-foreground shadow-2xl transition-[width,transform] duration-200 lg:sticky lg:top-0 lg:z-10 lg:h-screen ${collapsed ? "lg:w-16" : "lg:w-56"} lg:translate-x-0 lg:overflow-visible lg:shadow-none ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}
+        ref={asideRef}
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col overflow-y-auto border-r border-inverse-border bg-inverse text-inverse-foreground transition-[width,transform] duration-300 ease-out lg:sticky lg:top-0 lg:z-10 lg:h-screen lg:translate-x-0",
+          collapsed ? "lg:w-16" : "lg:w-60",
+          mobileOpen ? "translate-x-0 shadow-floating" : "-translate-x-full",
+        )}
+        aria-label="Planner navigation"
       >
+        {/* Brand - the console's own home */}
         <div
-          className={`flex min-h-[5rem] items-center border-b border-primary-foreground/15 ${collapsed ? "justify-center px-2" : "justify-between px-4"}`}
+          className={cn(
+            "flex min-h-16 items-center border-b border-inverse-border",
+            collapsed ? "justify-center px-2" : "justify-between px-4",
+          )}
         >
-          <div className={collapsed ? "sr-only" : ""}>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary-foreground">
-              KILIPLANNER
+          <a
+            href="/planner"
+            className={cn(
+              "min-w-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-inverse",
+              collapsed ? "sr-only" : "",
+            )}
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-inverse-muted">
+              KiliPlanner
             </p>
-            <p className="mt-1 text-lg font-semibold text-primary-foreground">
+            <p className="mt-0.5 truncate text-base font-semibold tracking-tight">
               Planner Console
             </p>
-          </div>
+          </a>
           {collapsed && (
-            <span
-              className="text-xl font-black text-primary-foreground"
-              aria-label="KiliPlanner"
+            <a
+              href="/planner"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-sm font-black text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-inverse"
+              aria-label="KiliPlanner planner console"
             >
               K
-            </span>
+            </a>
           )}
           <button
             type="button"
             onClick={() => setCollapsed((value) => !value)}
-            className="hidden rounded-md p-2 text-primary-foreground/70 hover:bg-primary/30 hover:text-primary-foreground lg:block"
+            className="hidden cursor-pointer rounded-lg p-2 text-inverse-muted transition-colors hover:bg-inverse-raised hover:text-inverse-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-inverse lg:block"
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {collapsed ? "›" : "‹"}
+            {collapsed ? (
+              <ChevronsRight className="h-4 w-4" />
+            ) : (
+              <ChevronsLeft className="h-4 w-4" />
+            )}
           </button>
         </div>
+
+        {/* Navigation */}
         <nav
-          className={`flex-1 space-y-1.5 p-3 ${collapsed ? "lg:px-2" : ""}`}
+          className={cn(
+            "min-h-0 flex-1 space-y-4 overflow-y-auto p-3",
+            collapsed ? "lg:px-2" : "",
+          )}
           aria-label="Planner navigation"
         >
-          {links.map(([label, href]) => {
-            const active =
-              href === "/planner"
-                ? pathname === href
-                : pathname.startsWith(href);
+          {linkGroups.map((group) => (
+            <div key={group.heading} className="space-y-1">
+              <p
+                className={cn(
+                  "px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-inverse-muted",
+                  collapsed ? "lg:hidden" : "",
+                )}
+              >
+                {group.heading}
+              </p>
+              {group.links.map((link) => {
+                const active =
+                  link.href === "/planner"
+                    ? pathname === link.href
+                    : pathname.startsWith(link.href);
+                const Icon = link.icon;
+                return (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      onMobileClose();
+                      navigateToPlanner(link.href);
+                    }}
+                    className={cn(
+                      "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-inverse",
+                      collapsed ? "lg:justify-center lg:px-2" : "",
+                      active
+                        ? "bg-primary text-primary-foreground shadow-soft"
+                        : "text-inverse-muted hover:bg-inverse-raised hover:text-inverse-foreground",
+                    )}
+                    title={collapsed ? link.label : undefined}
+                    aria-label={link.label}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <Icon
+                      className={cn(
+                        "h-4.5 w-4.5 shrink-0 transition-colors",
+                        active
+                          ? "text-primary-foreground"
+                          : "text-inverse-muted group-hover:text-inverse-foreground",
+                      )}
+                      aria-hidden="true"
+                    />
+                    <span className={collapsed ? "lg:hidden" : ""}>
+                      {link.label}
+                    </span>
+                  </a>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+
+        {/* Offsites - the rest of the platform */}
+        <div className="space-y-1 border-t border-inverse-border px-3 py-3">
+          <p
+            className={cn(
+              "px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-inverse-muted",
+              collapsed ? "lg:hidden" : "",
+            )}
+          >
+            Elsewhere
+          </p>
+          {offsiteLinks.map((link) => {
+            const Icon = link.icon;
             return (
               <a
-                key={href}
-                href={href}
-                onClick={(event) => {
-                  event.preventDefault();
-                  onMobileClose();
-                  navigateToPlanner(href);
-                }}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${collapsed ? "lg:justify-center lg:px-2" : ""} ${active ? "bg-primary text-primary-foreground shadow-lg shadow-foreground/30" : "text-primary-foreground/70 hover:bg-primary/30 hover:text-primary-foreground"}`}
-                title={collapsed ? label : undefined}
-                aria-label={label}
+                key={link.href}
+                href={link.href}
+                onClick={onMobileClose}
+                className={cn(
+                  "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-inverse-muted transition-colors hover:bg-inverse-raised hover:text-inverse-foreground",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-inverse",
+                  collapsed ? "lg:justify-center lg:px-2" : "",
+                )}
+                title={collapsed ? link.label : undefined}
+                aria-label={link.label}
               >
-                <Icon name={icons[label]} />
-                <span className={collapsed ? "lg:hidden" : ""}>{label}</span>
+                <Icon
+                  className="h-4 w-4 shrink-0 text-inverse-muted transition-colors group-hover:text-inverse-foreground"
+                  aria-hidden="true"
+                />
+                <span className={collapsed ? "lg:hidden" : ""}>
+                  {link.label}
+                </span>
               </a>
             );
           })}
-        </nav>
-        <a
-          href="/"
-          onClick={onMobileClose}
-          className={`mx-4 mb-4 flex items-center gap-3 border-t border-border px-3 pt-4 text-sm text-muted-foreground hover:text-primary-foreground ${collapsed ? "lg:mx-3 lg:justify-center lg:px-2" : ""}`}
-          title={collapsed ? "Return to public map" : undefined}
-          aria-label="Return to public map"
-        >
-          <span aria-hidden="true">↗</span>
-          <span className={collapsed ? "lg:hidden" : ""}>Public map</span>
-        </a>
+        </div>
+
+        <div className="border-t border-inverse-border px-4 py-3 text-[11px] text-inverse-muted">
+          {collapsed ? (
+            <span className="block text-center" aria-hidden="true">
+              © 26
+            </span>
+          ) : (
+            "Kilimani Civic Platform © 2026"
+          )}
+        </div>
       </aside>
     </>
   );

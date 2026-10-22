@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, usePlannerSession } from "../lib/plannerAccess";
+import { usePlannerSession, useRoute } from "../lib/plannerAccess";
 import AdminLayout from "../components/AdminLayout";
 import AdminDashboard from "./AdminDashboard";
 import AdminIssues from "./AdminIssues";
@@ -9,8 +9,12 @@ import AdminAnalytics from "./AdminAnalytics";
 import AdminNotifications from "./AdminNotifications";
 import AdminReports from "./AdminReports";
 import AdminSettings from "./AdminSettings";
+import AdminAuditLog from "./AdminAuditLog";
+import AdminHealth from "./AdminHealth";
+import AdminStatus from "./AdminStatus";
 import { useIssues } from "../../features/resident/hooks/useIssues";
 import { getPlannerSettings } from "../lib/plannerSettings";
+import { canonicalStatusFilter, type PlannerStatusFilter } from "../lib/plannerStatus";
 import PlannerLogin from "./PlannerLogin";
 import PageSkeleton from "../../components/PageSkeleton";
 import {
@@ -22,15 +26,30 @@ function routeTitle(pathname: string): string {
   if (pathname === "/planner/map") return "Live Infrastructure Map";
   if (pathname === "/planner/issues") return "Issue Management";
   if (pathname.startsWith("/planner/issues/")) return "Issue Details";
+  if (pathname === "/planner/status") return "Status board";
   if (pathname === "/planner/analytics") return "Analytics and Insights";
   if (pathname === "/planner/notifications") return "Notifications";
   if (pathname === "/planner/reports") return "Reports / Export";
+  if (pathname === "/planner/audit") return "Audit Log";
+  if (pathname === "/planner/health") return "System Health";
   if (pathname === "/planner/settings") return "Planner Settings";
   return "Planner Dashboard";
 }
 
+/**
+ * The status a list view should open on, taken from the URL.
+ *
+ * "?" with an unknown or missing status falls back to "all" rather than to
+ * a guess - a link that points at a state the data does not have must not
+ * silently filter to something else.
+ */
+function statusFromSearch(search: string): PlannerStatusFilter {
+  const value = new URLSearchParams(search).get("status");
+  return value ? canonicalStatusFilter(value) : "all";
+}
+
 export default function PlannerConsole() {
-  const pathname = useLocation();
+  const { pathname, search } = useRoute();
   const { session, loading: sessionLoading, authState } = usePlannerSession();
   if (sessionLoading)
     return (
@@ -40,10 +59,18 @@ export default function PlannerConsole() {
     );
   if (!session || authState.state !== "ADMIN") return <PlannerLogin />;
 
-  return <AuthenticatedPlannerConsole pathname={pathname} />;
+  return (
+    <AuthenticatedPlannerConsole pathname={pathname} search={search} />
+  );
 }
 
-function AuthenticatedPlannerConsole({ pathname }: { pathname: string }) {
+function AuthenticatedPlannerConsole({
+  pathname,
+  search,
+}: {
+  pathname: string;
+  search: string;
+}) {
   const settings = getPlannerSettings();
   const effectivePathname =
     pathname === "/planner" && settings.defaultMapView === "map"
@@ -134,8 +161,14 @@ function AuthenticatedPlannerConsole({ pathname }: { pathname: string }) {
       page = <AdminMap issues={allIssues} />;
     else if (effectivePathname === "/planner/issues")
       page = (
-        <AdminIssues searchTerm={searchTerm} refreshKey={realtimeVersion} />
-      );
+        <AdminIssues
+          searchTerm={searchTerm}
+          refreshKey={realtimeVersion}
+          initialStatus={statusFromSearch(search)}
+        />
+      )
+    else if (effectivePathname === "/planner/status")
+      page = <AdminStatus issues={allIssues} />;
     else if (effectivePathname.startsWith("/planner/issues/"))
       page = (
         <AdminIssueDetails
@@ -155,6 +188,10 @@ function AuthenticatedPlannerConsole({ pathname }: { pathname: string }) {
       );
     else if (effectivePathname === "/planner/reports")
       page = <AdminReports issues={allIssues} />;
+    else if (effectivePathname === "/planner/audit")
+      page = <AdminAuditLog />;
+    else if (effectivePathname === "/planner/health")
+      page = <AdminHealth issues={allIssues} />;
     else if (effectivePathname === "/planner/settings")
       page = <AdminSettings />;
   }
@@ -183,6 +220,7 @@ function AuthenticatedPlannerConsole({ pathname }: { pathname: string }) {
           effectivePathname !== "/planner" &&
           effectivePathname !== "/planner/map" &&
           effectivePathname !== "/planner/issues" &&
+          effectivePathname !== "/planner/status" &&
           effectivePathname !== "/planner/analytics" &&
           effectivePathname !== "/planner/notifications" &&
           effectivePathname !== "/planner/reports" &&
