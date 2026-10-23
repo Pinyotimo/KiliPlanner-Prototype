@@ -5,6 +5,7 @@ import StatusBadge from "../components/StatusBadge";
 import MapView from "../../components/MapView";
 import { navigateToPlanner } from "../lib/plannerAccess";
 import { updateAdminIssueStatus } from "../lib/adminQueries";
+import { recordConsoleActivity } from "../lib/auditLog";
 
 export default function AdminIssueDetails({ issue }: { issue?: Issue }) {
   const [status, setStatus] = useState<IssueStatus>(
@@ -43,6 +44,12 @@ export default function AdminIssueDetails({ issue }: { issue?: Issue }) {
       return;
     }
     setStatus(nextStatus);
+    recordConsoleActivity({
+      type: "status_change",
+      summary: `Moved a report to ${nextStatus}`,
+      detail: `from ${status}`,
+      reportId: String(issue.id),
+    });
     window.dispatchEvent(
       new CustomEvent("planner-issue-updated", {
         detail: { id: issue.id, status: nextStatus },
@@ -142,7 +149,12 @@ export default function AdminIssueDetails({ issue }: { issue?: Issue }) {
             {issue.lat}, {issue.lng}
           </p>
           <div className="mt-4 h-72 overflow-hidden rounded-lg [&_.map-container]:!h-full">
-            <MapView issues={[issue]} onValidClick={() => undefined} />
+            <MapView
+              issues={[issue]}
+              onValidClick={() => undefined}
+              mode="monitor"
+              framed={false}
+            />
           </div>
           <button
             type="button"

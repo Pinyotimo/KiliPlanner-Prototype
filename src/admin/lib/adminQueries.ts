@@ -1,10 +1,11 @@
 import { supabase } from "../../lib/supabaseClient";
 import type { Issue, IssueCategory, IssueStatus } from "../../types/issue";
+import { statusFilterValues, type PlannerStatusFilter } from "./plannerStatus";
 
 export type AdminIssuePageQuery = {
   searchTerm: string;
   category: IssueCategory | "all";
-  status: IssueStatus | "all";
+  status: PlannerStatusFilter;
   dateRange: "all" | "today" | "7d" | "30d";
   sort: "newest" | "oldest";
   page: number;
@@ -25,7 +26,9 @@ export async function getAdminIssueById(id: string): Promise<{ data: Issue | nul
 export async function getAdminIssuesPage(query: AdminIssuePageQuery) {
   let request = supabase.from("issues").select("*", { count: "exact" });
   if (query.category !== "all") request = request.eq("category", query.category);
-  if (query.status !== "all") request = request.eq("status", query.status);
+  const statuses = statusFilterValues(query.status);
+  if (statuses.length === 1) request = request.eq("status", statuses[0]);
+  else if (statuses.length > 1) request = request.in("status", statuses);
   if (query.dateRange !== "all") {
     const start = query.dateRange === "today" ? new Date(new Date().setHours(0, 0, 0, 0)) : new Date(Date.now() - (query.dateRange === "7d" ? 7 : 30) * 86400000);
     request = request.gte("created_at", start.toISOString());

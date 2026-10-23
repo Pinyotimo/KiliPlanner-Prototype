@@ -12,6 +12,8 @@ interface DraftMarkerProps {
   onDragEnd: (lat: number, lng: number) => void;
   onConfirm: () => void;
   onCancel: () => void;
+  /** Reported in the map, not in a native alert. */
+  onError: (message: string) => void;
 }
 
 export function DraftMarker({
@@ -19,20 +21,21 @@ export function DraftMarker({
   onDragEnd,
   onConfirm,
   onCancel,
+  onError,
 }: DraftMarkerProps) {
-  const [address, setAddress] = useState<string>("Detecting street name...");
+  const [address, setAddress] = useState<string | null>(null);
   const markerRef = useRef<LeafletMarker | null>(null);
 
   useEffect(() => {
     let isMounted = true;
-    setAddress("Detecting street name...");
+    setAddress(null);
 
     reverseGeocode(position[0], position[1])
       .then((res) => {
-        if (isMounted) setAddress(res || "Address not found. You can still confirm.");
+        if (isMounted) setAddress(res || "No landmark found for this point");
       })
       .catch(() => {
-        if (isMounted) setAddress("Address not found. You can still confirm.");
+        if (isMounted) setAddress("No landmark found for this point");
       });
 
     return () => {
@@ -46,9 +49,9 @@ export function DraftMarker({
 
   const draftIcon = L.divIcon({
     className: "bg-transparent border-none",
-    html: `<div class="relative flex items-center justify-center w-8 h-8">
-            <div class="absolute w-6 h-6 bg-primary/75 rounded-full animate-ping"></div>
-            <div class="relative w-4 h-4 bg-primary border-2 border-background rounded-full shadow-md"></div>
+    html: `<div class="relative flex h-8 w-8 items-center justify-center">
+            <div class="absolute h-6 w-6 animate-ping rounded-full" style="background-color: color-mix(in oklab, var(--primary) 75%, transparent)"></div>
+            <div class="relative h-4 w-4 rounded-full border-2" style="background-color: var(--primary); border-color: var(--background)"></div>
            </div>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
@@ -67,46 +70,53 @@ export function DraftMarker({
           if (isInsideNyayoEstate(pos.lat, pos.lng)) {
             onDragEnd(pos.lat, pos.lng);
           } else {
-            alert("Please keep the pin inside Nyayo Estate.");
+            onError(
+              "That point is outside the Nyayo Estate boundary. The pin has been put back - move it inside the outlined area.",
+            );
             onDragEnd(position[0], position[1]);
           }
         },
       }}
     >
-      <Popup closeButton={false} closeOnClick={false} autoClose={false} className="custom-popup">
-        <div className="p-2.5 min-w-[200px] space-y-3 bg-card text-card-foreground rounded-xl">
-          <div className="text-center space-y-1">
-            <p className="text-xs font-bold text-foreground flex items-center justify-center gap-1">
+      <Popup
+        closeButton={false}
+        closeOnClick={false}
+        autoClose={false}
+        className="custom-popup"
+      >
+        <div className="min-w-[220px] space-y-3 rounded-xl bg-card p-3 text-card-foreground">
+          <div className="space-y-1 text-center">
+            <p className="flex items-center justify-center gap-1 text-xs font-bold text-foreground">
               <MapPin className="h-4 w-4 text-primary" /> Adjust Location
             </p>
-            <p className="text-[11px] text-muted-foreground font-medium leading-tight">
-              {address}
+            <p className="text-[11px] font-medium leading-tight text-muted-foreground">
+              {address ?? "Looking up the nearest landmark..."}
             </p>
-            <p className="text-[9px] text-muted-foreground italic bg-muted/50 py-1 rounded-md">
-              Drag the pulsing pin to fine-tune
+            <p className="rounded-md bg-muted/50 py-1 text-[10px] leading-tight text-muted-foreground">
+              Drag the pulsing pin to fine-tune, then confirm.
             </p>
           </div>
           <div className="flex gap-2">
             <Button
               size="sm"
               variant="outline"
-              className="w-1/2 h-8 text-xs rounded-lg"
+              className="h-8 w-1/2 cursor-pointer rounded-lg text-xs"
               onClick={(e) => {
                 e.stopPropagation();
                 onCancel();
               }}
             >
-              <X className="h-3 w-3 mr-1" /> Cancel
+              <X className="mr-1 h-3 w-3" /> Cancel
             </Button>
             <Button
               size="sm"
-              className="w-1/2 h-8 text-xs rounded-lg bg-primary text-primary-foreground"
+              className="h-8 w-1/2 cursor-pointer rounded-lg text-xs"
               onClick={(e) => {
                 e.stopPropagation();
                 onConfirm();
               }}
             >
-              <Check className="h-3 w-3 mr-1" /> Confirm
+              <Check className="mr-1 h-3 w-3" /> Confirm
             </Button>
           </div>
         </div>

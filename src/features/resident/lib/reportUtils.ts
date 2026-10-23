@@ -18,6 +18,52 @@ export function getDistanceInMeters(
   return R * c;
 }
 
+/**
+ * Reads a picked file into a downscaled JPEG data URL.
+ *
+ * The camera path already downscales to 800px. A file from the gallery has to
+ * land in the same shape, or one photo is 4 MB of base64 and the report never
+ * reaches the database.
+ */
+export function fileToCompressedDataUrl(
+  file: File,
+  maxSize = 800,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith("image/")) {
+      reject(new Error("That file is not an image. Choose a photo."));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("That file could not be read."));
+    reader.onload = () => {
+      const image = new Image();
+      image.onerror = () =>
+        reject(new Error("That image could not be opened. Try another one."));
+      image.onload = () => {
+        const scale = Math.min(
+          maxSize / image.width,
+          maxSize / image.height,
+          1,
+        );
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("Your browser could not process that image."));
+          return;
+        }
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      image.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export async function dispatchEmailToAuthority(
   issueData: any,
   lat: number,

@@ -16,15 +16,17 @@ export default function AdminNotifications({
   onMarkRead,
 }: AdminNotificationsProps) {
   return (
-    <NotificationList
-      issues={issues}
-      unreadIssueIds={unreadIssues.map((issue) => issue.id)}
-      onIssueSelect={(issueId) => {
-        onMarkRead(issueId);
-        navigateToPlanner(`/planner/issues/${issueId}`);
-      }}
-      onMarkAllRead={onMarkAllRead}
-      emptyMessage="No infrastructure reports have been submitted yet."
-    />
+    <div className="rounded-xl border border-border bg-card p-5 shadow-soft">
+      <NotificationList
+        issues={issues}
+        unreadIssueIds={unreadIssues.map((issue) => issue.id)}
+        onIssueSelect={(issueId) => {
+          onMarkRead(issueId);
+          navigateToPlanner(`/planner/issues/${issueId}`);
+        }}
+        onMarkAllRead={onMarkAllRead}
+        emptyMessage="No infrastructure reports have been submitted yet."
+      />
+    </div>
   );
 }

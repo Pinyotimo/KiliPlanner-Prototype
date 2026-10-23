@@ -1,13 +1,17 @@
-import type { IssueCategory, IssueStatus } from "../../types/issue";
+import type { IssueCategory } from "../../types/issue";
 import { CATEGORY_LABELS } from "../../types/issue";
+import {
+  STATUS_FILTER_OPTIONS,
+  type PlannerStatusFilter,
+} from "../lib/plannerStatus";
 
 type IssueFiltersProps = {
   category: IssueCategory | "all";
-  status: IssueStatus | "all";
+  status: PlannerStatusFilter;
   dateRange: "all" | "today" | "7d" | "30d";
   sort: "newest" | "oldest";
   onCategoryChange: (value: IssueCategory | "all") => void;
-  onStatusChange: (value: IssueStatus | "all") => void;
+  onStatusChange: (value: PlannerStatusFilter) => void;
   onDateRangeChange: (value: IssueFiltersProps["dateRange"]) => void;
   onSortChange: (value: IssueFiltersProps["sort"]) => void;
 };
@@ -27,6 +31,10 @@ const categories: IssueCategory[] = [
   "other",
 ];
 
+/** Shared control styling for the four filter selects. */
+const selectClass =
+  "mt-1.5 block w-full cursor-pointer rounded-lg border border-input bg-card px-3 py-2 text-sm font-normal normal-case text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20";
+
 export default function IssueFilters({
   category,
   status,
@@ -38,15 +46,15 @@ export default function IssueFilters({
   onSortChange,
 }: IssueFiltersProps) {
   return (
-    <div className="mb-5 grid gap-3 rounded-xl border border-border bg-card p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
-      <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+    <div className="mb-5 grid gap-4 rounded-xl border border-border bg-card p-4 shadow-soft sm:grid-cols-2 lg:grid-cols-4">
+      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         Category
         <select
           value={category}
           onChange={(event) =>
             onCategoryChange(event.target.value as IssueCategory | "all")
           }
-          className="mt-1 block w-full rounded-lg border border-input bg-card px-3 py-2 text-sm font-normal normal-case text-foreground"
+          className={selectClass}
         >
           <option value="all">All categories</option>
           {categories.map((value) => (
@@ -57,27 +65,24 @@ export default function IssueFilters({
         </select>
       </label>
 
-      <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         Status
         <select
           value={status}
           onChange={(event) =>
-            onStatusChange(event.target.value as IssueStatus | "all")
+            onStatusChange(event.target.value as PlannerStatusFilter)
           }
-          className="mt-1 block w-full rounded-lg border border-input bg-card px-3 py-2 text-sm font-normal normal-case text-foreground"
+          className={selectClass}
         >
-          <option value="all">All statuses</option>
-          <option value="open">Open</option>
-          <option value="UNVERIFIED">Under verification</option>
-          <option value="UNDER_REVIEW">Under review</option>
-          <option value="CORROBORATED">Corroborated</option>
-          <option value="VERIFIED">Verified</option>
-          <option value="resolved">Resolved</option>
-          <option value="REJECTED">Rejected</option>
+          {STATUS_FILTER_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
       </label>
 
-      <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         Date
         <select
           value={dateRange}
@@ -86,7 +91,7 @@ export default function IssueFilters({
               event.target.value as IssueFiltersProps["dateRange"],
             )
           }
-          className="mt-1 block w-full rounded-lg border border-input bg-card px-3 py-2 text-sm font-normal normal-case text-foreground"
+          className={selectClass}
         >
           <option value="all">All time</option>
           <option value="today">Today</option>
@@ -95,14 +100,14 @@ export default function IssueFilters({
         </select>
       </label>
 
-      <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         Sort
         <select
           value={sort}
           onChange={(event) =>
             onSortChange(event.target.value as IssueFiltersProps["sort"])
           }
-          className="mt-1 block w-full rounded-lg border border-input bg-card px-3 py-2 text-sm font-normal normal-case text-foreground"
+          className={selectClass}
         >
           <option value="newest">Newest</option>
           <option value="oldest">Oldest</option>

@@ -13,6 +13,7 @@ import PageSkeleton from "./components/PageSkeleton";
 import { useIssues } from "./features/resident/hooks/useIssues";
 import { MapPin } from "lucide-react";
 import PlannerConsole from "./admin/pages/PlannerConsole";
+import LandingPage from "./landing/LandingPage";
 import { OfficialDashboard } from "./officials/pages/OfficialDashboard";
 import type { Issue } from "./types/issue";
 import {
@@ -31,16 +32,27 @@ type PendingPoint = { lat: number; lng: number };
 const RESIDENT_NOTIFICATIONS_KEY = "kiliplanner-resident-notifications-enabled";
 
 export default function App() {
-  if (window.location.pathname.startsWith("/planner")) {
+  const path = window.location.pathname;
+
+  // The public front door. Everything else is a working surface.
+  if (path === "/" || path === "/index.html" || path === "/landing") {
+    return <LandingPage />;
+  }
+
+  if (path.startsWith("/planner")) {
     return <PlannerConsole />;
   }
 
-  if (window.location.pathname.startsWith("/officials")) {
+  if (path.startsWith("/officials")) {
     return (
       <OfficialDashboard officialId="a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11" />
     );
   }
 
+  return <ResidentApp />;
+}
+
+function ResidentApp() {
   const {
     issues,
     allIssues,
@@ -236,7 +248,7 @@ export default function App() {
     : issues;
 
   return (
-    <div className="h-screen w-screen bg-background text-foreground flex flex-col overflow-hidden">
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
       <Navbar
         onOpenSidebar={() => setSidebarOpen(true)}
         onReportClick={handleStartReporting}
@@ -244,7 +256,7 @@ export default function App() {
         unreadCount={notificationsEnabled ? residentNotificationIds.length : 0}
       />
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="relative flex flex-1 overflow-hidden">
         <Sidebar
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
@@ -254,9 +266,9 @@ export default function App() {
           resolvedCount={resolvedCount}
         />
 
-        <main className="flex-1 flex flex-col min-w-0 overflow-y-auto relative">
+        <main className="relative flex min-w-0 flex-1 flex-col overflow-y-auto">
           {((viewMode === "feed" && !focusedIssueId) || viewMode === "map") && (
-            <div className="p-3 bg-card border-b border-border flex justify-center sticky top-0 z-30 shadow-xs">
+            <div className="sticky top-0 z-30 flex justify-center border-b border-border bg-card/85 p-3 backdrop-blur-xl">
               <FilterBar
                 selectedCategory={selectedCategory}
                 onCategoryChange={setSelectedCategory}
@@ -267,7 +279,7 @@ export default function App() {
           )}
 
           {error && (
-            <div className="bg-destructive/15 text-destructive text-xs p-3 text-center border-b border-destructive/20">
+            <div className="border-b border-destructive/25 bg-destructive/10 p-3 text-center text-xs text-destructive">
               {error}
             </div>
           )}
@@ -291,21 +303,27 @@ export default function App() {
               )}
 
               {viewMode === "map" && (
-                <div className="flex-1 w-full relative min-h-125">
+                <div className="relative min-h-125 w-full flex-1">
                   {isSelectingLocation && !pendingPoint && (
-                    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-medium px-4 py-2 rounded-full z-20 shadow-lg border border-primary/20 animate-fade-in flex items-center gap-1.5">
+                    <div className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 animate-fade-in items-center gap-1.5 rounded-full border border-primary/25 bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-lifted">
                       <MapPin className="h-4 w-4" />
                       <span>
                         Tap anywhere on the map to pinpoint your issue
                       </span>
                     </div>
                   )}
-                  <MapView issues={issues} onValidClick={handleValidClick} />
+                  <MapView
+                    issues={issues}
+                    onValidClick={handleValidClick}
+                    onIssueSelect={(issue) =>
+                      handleAnalyticsDetailClick(String(issue.id))
+                    }
+                  />
                 </div>
               )}
 
               {viewMode === "analytics" && (
-                <div className="flex-1 flex justify-center p-4">
+                <div className="flex flex-1 justify-center p-4">
                   <StatsPanel
                     issues={allIssues}
                     onNavigateToFeed={handleAnalyticsDetailClick}
@@ -338,9 +356,11 @@ export default function App() {
               )}
 
               {justSubmitted && (
-                <div className="fixed bottom-6 left-1/2 z-50 w-[min(92vw,28rem)] -translate-x-1/2 rounded-xl border border-primary/30 bg-card p-4 text-card-foreground shadow-2xl">
+                <div className="fixed bottom-6 left-1/2 z-50 w-[min(92vw,28rem)] -translate-x-1/2 rounded-xl border border-primary/30 bg-card p-4 text-card-foreground shadow-floating">
                   <div className="flex items-start gap-3">
-                    <span className="text-lg text-primary">✓</span>
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-success/15 text-sm text-success">
+                      ✓
+                    </span>
                     <div className="min-w-0 flex-1 space-y-2">
                       <p className="font-semibold">Report submitted</p>
                       <p className="text-xs text-muted-foreground">
@@ -350,9 +370,11 @@ export default function App() {
                         UNVERIFIED
                       </p>
                       <p className="text-xs leading-relaxed text-muted-foreground">
-                        Your identity remains private. The report may be
-                        corroborated by other verified residents and reviewed
-                        by authorized planners.
+                        Your report is now on the map. If you gave a name or
+                        email, it went to the ward office so an officer can
+                        follow up - it is not shown on the public map or feed.
+                        The report can be corroborated by other residents and
+                        reviewed by authorized planners.
                       </p>
                       {submittedReportId && (
                         <p className="rounded-md bg-muted px-2 py-1 font-mono text-[11px]">
@@ -360,9 +382,7 @@ export default function App() {
                         </p>
                       )}
                       <div className="space-y-1 border-t border-border pt-2 text-[11px] text-muted-foreground">
-                        <p className="font-semibold text-foreground">
-                          Tracking
-                        </p>
+                        <p className="font-semibold text-foreground">Tracking</p>
                         <p>Submitted</p>
                         <p>Evidence checked</p>
                         <p>Under review</p>
@@ -375,6 +395,7 @@ export default function App() {
                         variant="outline"
                         size="sm"
                         onClick={dismissSubmissionConfirmation}
+                        className="cursor-pointer"
                       >
                         Close
                       </Button>

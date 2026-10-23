@@ -97,13 +97,13 @@ export default function CommentSection({ issueId }: CommentSectionProps) {
   }
 
   return (
-    <div className="mt-3 pt-3 border-t border-border">
+    <div className="mt-3 border-t border-border pt-3">
       {/* Toggle Button with Live Count */}
       <Button
         variant="ghost"
         size="sm"
         onClick={() => setShowComments(!showComments)}
-        className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1.5 p-0 hover:bg-transparent"
+        className="h-7 cursor-pointer gap-1.5 p-0 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
       >
         <MessageSquare className="h-3.5 w-3.5" />
         {showComments
@@ -123,29 +123,29 @@ export default function CommentSection({ issueId }: CommentSectionProps) {
             transition={{ duration: 0.2, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="space-y-3 bg-muted/40 p-3 rounded-lg border border-border mt-2">
+            <div className="mt-2 space-y-3 rounded-lg border border-border bg-muted/40 p-3">
               {/* Comments List */}
               {loading ? (
-                <div className="flex items-center justify-center py-4 text-muted-foreground text-xs gap-2">
+                <div className="flex items-center justify-center gap-2 py-4 text-xs text-muted-foreground">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   <span>Loading comments...</span>
                 </div>
               ) : comments.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground italic">
+                <p className="text-[11px] italic text-muted-foreground">
                   No comments yet. Be the first to comment!
                 </p>
               ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
                   {comments.map((comment) => (
                     <motion.div
                       key={comment.id}
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.15 }}
-                      className="bg-card p-2 rounded-md border border-border text-xs space-y-1 shadow-xs"
+                      className="space-y-1 rounded-md border border-border bg-card p-2 text-xs shadow-soft"
                     >
-                      <div className="flex justify-between items-center text-muted-foreground">
-                        <span className="font-semibold text-foreground flex items-center gap-1 text-[11px]">
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <span className="flex items-center gap-1 text-[11px] font-semibold text-foreground">
                           <User className="h-3 w-3 text-muted-foreground" />
                           {comment.author_name}
                         </span>
@@ -153,7 +153,7 @@ export default function CommentSection({ issueId }: CommentSectionProps) {
                           {relativeTime(comment.created_at)}
                         </span>
                       </div>
-                      <p className="text-foreground leading-relaxed">
+                      <p className="leading-relaxed text-foreground">
                         {comment.content}
                       </p>
                     </motion.div>
@@ -164,22 +164,20 @@ export default function CommentSection({ issueId }: CommentSectionProps) {
               {/* Add Comment Form */}
               <form
                 onSubmit={handleAddComment}
-                className="space-y-2 pt-2 border-t border-border"
+                className="space-y-2 border-t border-border pt-2"
               >
-                <div className="flex gap-2">
-                  <Input
-                    type="text"
-                    placeholder="Write a comment..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    className="w-full h-8 text-xs"
-                  />
-                </div>
+                <Input
+                  type="text"
+                  placeholder="Write a comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  className="h-8 w-full text-xs"
+                />
                 <Button
                   type="submit"
                   size="sm"
                   disabled={submitting || !newComment.trim()}
-                  className="w-full h-8 text-xs font-medium gap-1.5"
+                  className="h-8 w-full cursor-pointer gap-1.5 text-xs font-medium"
                 >
                   {submitting ? (
                     <>

@@ -24,8 +24,8 @@ export default function ResidentNotifications({
 }: ResidentNotificationsProps) {
   if (!notificationsEnabled) {
     return (
-      <div className="mx-auto max-w-2xl p-4">
-        <section className="rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-xs">
+      <div className="mx-auto w-full max-w-2xl px-4 py-6">
+        <section className="rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-soft">
           <div className="flex items-start gap-4">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Bell className="h-5 w-5" />
@@ -44,7 +44,7 @@ export default function ResidentNotifications({
                 <Button
                   type="button"
                   onClick={onEnableNotifications}
-                  className="gap-1.5 text-xs font-bold"
+                  className="cursor-pointer gap-1.5 text-xs font-bold"
                 >
                   <Bell className="h-4 w-4" />
                   Enable Notifications
@@ -53,7 +53,7 @@ export default function ResidentNotifications({
                   type="button"
                   variant="outline"
                   onClick={onDisableNotifications}
-                  className="gap-1.5 text-xs font-semibold"
+                  className="cursor-pointer gap-1.5 text-xs font-semibold"
                 >
                   <BellOff className="h-4 w-4" />
                   Not Now
@@ -67,7 +67,7 @@ export default function ResidentNotifications({
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-4 pb-24">
+    <div className="mx-auto w-full max-w-3xl px-4 pb-24 pt-6">
       <NotificationList
         issues={issues}
         unreadIssueIds={unreadIssueIds}
@@ -79,7 +79,7 @@ export default function ResidentNotifications({
           type="button"
           variant="ghost"
           onClick={onDisableNotifications}
-          className="w-full justify-center gap-1.5 text-xs text-muted-foreground sm:w-auto"
+          className="w-full cursor-pointer justify-center gap-1.5 text-xs text-muted-foreground sm:w-auto"
         >
           <BellOff className="h-3.5 w-3.5" />
           Disable Notifications

@@ -42,22 +42,28 @@ export default function AdminLayout({
           mobileOpen={mobileOpen}
           onMobileClose={() => setMobileOpen(false)}
         />
-        <main className="min-w-0 flex-1 p-4 lg:p-8">
-          <AdminHeader
-            title={title}
-            onMenuClick={() => setMobileOpen(true)}
-            realtimeStatus={realtimeStatus}
-            showSearch={showSearch}
-            searchValue={searchValue}
-            onSearchChange={onSearchChange}
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            showBreadcrumb={showBreadcrumb}
-            notifications={notifications}
-            onNotificationsRead={onNotificationsRead}
-            onNotificationRead={onNotificationRead}
-          />
-          {children}
+        <main
+          id="planner-content"
+          tabIndex={-1}
+          className="min-w-0 flex-1 focus:outline-none"
+        >
+          <div className="mx-auto w-full max-w-[110rem] px-4 py-6 lg:px-8 lg:py-8">
+            <AdminHeader
+              title={title}
+              onMenuClick={() => setMobileOpen(true)}
+              realtimeStatus={realtimeStatus}
+              showSearch={showSearch}
+              searchValue={searchValue}
+              onSearchChange={onSearchChange}
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              showBreadcrumb={showBreadcrumb}
+              notifications={notifications}
+              onNotificationsRead={onNotificationsRead}
+              onNotificationRead={onNotificationRead}
+            />
+            {children}
+          </div>
         </main>
       </div>
     </div>

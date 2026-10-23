@@ -1,6 +1,6 @@
 import L from "leaflet";
 import type { IssueCategory } from "../types/issue";
-import { CATEGORY_COLORS } from "../types/issue";
+import { CATEGORY_COLORS, CATEGORY_INK } from "../types/issue";
 
 const CATEGORY_SVGS: Record<string, string> = {
   infrastructure: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
@@ -15,8 +15,15 @@ const CATEGORY_SVGS: Record<string, string> = {
   default: `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`,
 };
 
+/**
+ * The pin body takes the category's identity colour; the glyph takes the
+ * matching "ink" token, which is picked per mode so the glyph always clears
+ * contrast against its own fill. The ring uses the surface token so it reads
+ * as a halo against any basemap tile in both light and dark.
+ */
 export function createCategoryDivIcon(category: IssueCategory) {
   const color = CATEGORY_COLORS[category] || "var(--category-other, #64748b)";
+  const ink = CATEGORY_INK[category] || "var(--category-other-ink, #ffffff)";
   const iconSvg = CATEGORY_SVGS[category] || CATEGORY_SVGS.default;
 
   const html = `
@@ -29,9 +36,9 @@ export function createCategoryDivIcon(category: IssueCategory) {
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 2px solid white;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.25);
-      color: white;
+      border: 2px solid var(--card, #ffffff);
+      box-shadow: 0 4px 10px color-mix(in oklab, ${color} 45%, transparent);
+      color: ${ink};
     ">
       <div style="transform: rotate(45deg); display: flex; align-items: center; justify-content: center;">
         ${iconSvg}
@@ -55,7 +62,8 @@ export function createIssueDivIcon(category: IssueCategory, status: string) {
   // Security or unverified issues render custom visual treatments
   if (normalizedStatus === "UNVERIFIED") {
     return L.divIcon({
-      className: "custom-category-pin opacity-70 grayscale hover:grayscale-0 transition-all",
+      className:
+        "custom-category-pin opacity-70 grayscale hover:grayscale-0 transition-all",
       html: icon.options.html,
       iconSize: icon.options.iconSize,
       iconAnchor: icon.options.iconAnchor,
@@ -64,12 +72,13 @@ export function createIssueDivIcon(category: IssueCategory, status: string) {
   }
 
   if (category === "security") {
-    const color = CATEGORY_COLORS.security || "#ef4444";
+    const color = CATEGORY_COLORS.security || "var(--destructive)";
+    const ink = CATEGORY_INK.security || "var(--category-security-ink, #ffffff)";
     const iconSvg = CATEGORY_SVGS.security;
 
     const html = `
       <div class="relative flex items-center justify-center">
-        <div class="absolute -inset-1 rounded-full bg-red-500/40 animate-ping"></div>
+        <div class="absolute -inset-1 rounded-full animate-ping" style="background-color: color-mix(in oklab, ${color} 40%, transparent)"></div>
         <div style="
           background-color: ${color};
           width: 34px;
@@ -79,9 +88,9 @@ export function createIssueDivIcon(category: IssueCategory, status: string) {
           display: flex;
           align-items: center;
           justify-content: center;
-          border: 2px solid white;
-          box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
-          color: white;
+          border: 2px solid var(--card, #ffffff);
+          box-shadow: 0 4px 12px color-mix(in oklab, ${color} 50%, transparent);
+          color: ${ink};
         ">
           <div style="transform: rotate(45deg); display: flex; align-items: center; justify-content: center;">
             ${iconSvg}

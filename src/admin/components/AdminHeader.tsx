@@ -1,8 +1,22 @@
 import { useEffect, useState } from "react";
+import {
+  Bell,
+  ChevronRight,
+  Menu,
+  RefreshCw,
+  Search,
+  User,
+  Wifi,
+  WifiOff,
+  Loader2,
+} from "lucide-react";
 import type { Issue } from "../../types/issue";
 import { CATEGORY_LABELS } from "../../types/issue";
 import { relativeTime } from "../../lib/relativeTime";
 import { navigateToPlanner } from "../lib/plannerAccess";
+import { ThemeSwitcher } from "../../theme/ThemeSwitcher";
+import { Button } from "../../components/ui/button";
+import { cn } from "@/lib/utils";
 
 type AdminHeaderProps = {
   title?: string;
@@ -18,35 +32,6 @@ type AdminHeaderProps = {
   onNotificationsRead?: () => void;
   onNotificationRead?: (issueId: string) => void;
 };
-
-function HeaderIcon({
-  type,
-}: {
-  type: "menu" | "search" | "bell" | "user" | "refresh";
-}) {
-  const paths = {
-    menu: "M4 6h16M4 12h16M4 18h16",
-    search: "m21 21-4.35-4.35m2.1-5.4a7.5 7.5 0 1 1-15 0 7.5 7.5 0 0 1 15 0Z",
-    bell: "M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4",
-    user: "M20 21a8 8 0 0 0-16 0m12-13a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
-    refresh:
-      "M20 11a8 8 0 0 0-14.9-3M4 5v4h4m-4 3a8 8 0 0 0 14.9 3M20 19v-4h-4",
-  };
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d={paths[type]} />
-    </svg>
-  );
-}
 
 export default function AdminHeader({
   title = "Admin Overview",
@@ -87,82 +72,117 @@ export default function AdminHeader({
     <header className="mb-6 border-b border-border pb-5">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="icon"
             onClick={onMenuClick}
-            className="rounded-lg border border-input bg-card p-2 text-foreground shadow-sm hover:bg-muted lg:hidden"
+            className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:hidden"
             aria-label="Open planner navigation"
             title="Open planner navigation"
           >
-            <HeaderIcon type="menu" />
-          </button>
+            <Menu className="h-4.5 w-4.5" />
+          </Button>
           <div className="min-w-0">
             {showBreadcrumb && (
-              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <nav
+                aria-label="Breadcrumb"
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground"
+              >
                 <span>Planner</span>
-                <span aria-hidden="true">/</span>
-                <span className="truncate">{title}</span>
-              </div>
+                <ChevronRight className="h-3 w-3" aria-hidden="true" />
+                <span className="truncate text-foreground">{title}</span>
+              </nav>
             )}
-            <h1 className="truncate text-2xl font-bold text-foreground">
+            <h1 className="truncate text-2xl font-bold tracking-tight text-foreground">
               {title}
             </h1>
           </div>
         </div>
-        <div className="flex items-center gap-2 sm:gap-4">
+
+        <div className="flex items-center gap-2 sm:gap-3">
           {showSearch && (
             <label className="relative hidden md:block">
               <span className="sr-only">Search issues</span>
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
               <input
                 value={searchValue}
                 onChange={(event) => onSearchChange?.(event.target.value)}
                 placeholder="Search issues"
-                className="w-48 rounded-lg border border-input bg-card py-2 pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                className="h-9 w-52 rounded-lg border border-input bg-card pl-9 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
-              <span className="pointer-events-none absolute left-3 top-2.5 text-muted-foreground">
-                <HeaderIcon type="search" />
-              </span>
             </label>
           )}
+
+          {/* Realtime state: the chip always shows a text label and an icon,
+              so the status never rests on colour alone. The label keeps the
+              default ink for legibility; the tone rides on the icon. */}
           <span
-            className={`flex items-center gap-2 text-sm font-medium ${realtimeStatus === "live" ? "text-primary" : "text-accent-foreground"}`}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-foreground",
+            )}
           >
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${realtimeStatus === "live" ? "bg-primary" : "bg-accent"}`}
-            />
+            {realtimeStatus === "live" && (
+              <Wifi
+                className="h-3.5 w-3.5 text-success"
+                aria-hidden="true"
+              />
+            )}
+            {realtimeStatus === "offline" && (
+              <WifiOff
+                className="h-3.5 w-3.5 text-destructive"
+                aria-hidden="true"
+              />
+            )}
+            {realtimeStatus === "connecting" && (
+              <Loader2
+                className="h-3.5 w-3.5 animate-spin text-warning"
+                aria-hidden="true"
+              />
+            )}
             {statusLabel}
           </span>
-          <button
-            type="button"
+
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onRefresh}
             disabled={refreshing}
-            className="inline-flex rounded-md p-1 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-50"
             title={refreshing ? "Refreshing data" : "Refresh data"}
             aria-label={refreshing ? "Refreshing data" : "Refresh data"}
           >
-            <HeaderIcon type="refresh" />
-          </button>
+            <RefreshCw
+              className={cn("h-4.5 w-4.5", refreshing && "animate-spin")}
+            />
+          </Button>
+
+          <ThemeSwitcher />
+
           <div className="relative">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={toggleNotifications}
-              className="relative rounded-lg p-2 text-foreground hover:bg-accent"
+              className="relative"
               title="Notifications"
               aria-label={`Notifications${notifications.length ? `, ${notifications.length} unread` : ""}`}
               aria-expanded={notificationsOpen}
               aria-controls="planner-notifications"
             >
-              <HeaderIcon type="bell" />
+              <Bell className="h-4.5 w-4.5" />
               {notifications.length > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-primary-foreground">
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground ring-2 ring-background">
                   {notifications.length > 9 ? "9+" : notifications.length}
                 </span>
               )}
-            </button>
+            </Button>
+
             {notificationsOpen && (
               <div
                 id="planner-notifications"
-                className="absolute right-0 top-11 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card p-3 text-left shadow-xl"
+                className="absolute right-0 top-11 z-50 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-popover p-3 text-left text-popover-foreground shadow-floating"
               >
                 <div className="flex items-center justify-between px-2 pb-2">
                   <h2 className="text-sm font-semibold text-foreground">
@@ -172,14 +192,14 @@ export default function AdminHeader({
                     <button
                       type="button"
                       onClick={onNotificationsRead}
-                      className="text-xs font-medium text-primary hover:text-primary"
+                      className="cursor-pointer text-xs font-medium text-primary hover:underline"
                     >
                       Mark all read
                     </button>
                     <button
                       type="button"
                       onClick={() => setNotificationsOpen(false)}
-                      className="text-xs text-muted-foreground hover:text-foreground"
+                      className="cursor-pointer text-xs text-muted-foreground hover:text-foreground"
                     >
                       Close
                     </button>
@@ -200,12 +220,12 @@ export default function AdminHeader({
                           setNotificationsOpen(false);
                           navigateToPlanner(`/planner/issues/${issue.id}`);
                         }}
-                        className="block w-full rounded-lg p-2 text-left hover:bg-muted"
+                        className="block w-full cursor-pointer rounded-lg p-2 text-left transition-colors hover:bg-muted"
                       >
                         <p className="line-clamp-2 text-sm font-medium text-foreground">
                           New {CATEGORY_LABELS[issue.category]} report
                         </p>
-                        <p className="mt-1 line-clamp-1 text-xs text-foreground">
+                        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
                           {issue.description}
                         </p>
                         <p className="mt-1 text-xs text-muted-foreground">
@@ -218,12 +238,13 @@ export default function AdminHeader({
               </div>
             )}
           </div>
+
           <div
             className="flex items-center gap-2 border-l border-border pl-3"
             aria-label="Planner profile"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-primary-foreground">
-              <HeaderIcon type="user" />
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <User className="h-4 w-4" aria-hidden="true" />
             </span>
             <span className="hidden text-sm font-semibold text-foreground sm:inline">
               Planner
@@ -231,14 +252,19 @@ export default function AdminHeader({
           </div>
         </div>
       </div>
+
       {showSearch && (
         <label className="relative mt-4 block md:hidden">
           <span className="sr-only">Search issues</span>
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden="true"
+          />
           <input
             value={searchValue}
             onChange={(event) => onSearchChange?.(event.target.value)}
             placeholder="Search issues"
-            className="w-full rounded-lg border border-input bg-card py-2 pl-3 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            className="h-9 w-full rounded-lg border border-input bg-card pl-9 pr-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
         </label>
       )}

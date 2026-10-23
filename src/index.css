@@ -2,6 +2,11 @@
 @import "tw-animate-css";
 @import "@fontsource-variable/geist";
 
+/* Tailwind v4 defaults the `dark:` variant to the OS preference. KiliPlanner
+   lets the viewer pick a mode, so the variant follows the `.dark` class the
+   theme provider writes onto <html>. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --font-sans:
     "Geist Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
@@ -24,100 +29,263 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-inverse: var(--inverse-surface);
+  --color-inverse-foreground: var(--inverse-foreground);
+  --color-inverse-muted: var(--inverse-muted);
+  --color-inverse-border: var(--inverse-border);
+  --color-inverse-raised: var(--inverse-surface-raised);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  --shadow-soft: 0 1px 2px 0 color-mix(in oklab, var(--foreground) 6%, transparent),
+    0 1px 3px 0 color-mix(in oklab, var(--foreground) 4%, transparent);
+  --shadow-lifted: 0 4px 12px -2px color-mix(in oklab, var(--foreground) 10%, transparent),
+    0 2px 6px -2px color-mix(in oklab, var(--foreground) 6%, transparent);
+  --shadow-floating: 0 12px 32px -8px color-mix(in oklab, var(--foreground) 18%, transparent),
+    0 4px 12px -4px color-mix(in oklab, var(--foreground) 8%, transparent);
 }
 
 @layer base {
-  :root {
-    /* Lichen, moss, and warm stone theme (Light Mode) */
-    --background: oklch(0.87 0.035 145);
-    --foreground: oklch(0.24 0.04 145);
-    --card: oklch(0.91 0.032 125);
-    --card-foreground: oklch(0.24 0.04 145);
-    --popover: oklch(0.925 0.035 125);
-    --popover-foreground: oklch(0.24 0.04 145);
-    --primary: oklch(0.38 0.12 150);
-    --primary-foreground: oklch(0.96 0.018 125);
-    --secondary: oklch(0.79 0.055 140);
-    --secondary-foreground: oklch(0.24 0.04 145);
-    --muted: oklch(0.8 0.045 145);
-    --muted-foreground: oklch(0.42 0.045 145);
-    --accent: oklch(0.84 0.07 105);
-    --accent-foreground: oklch(0.25 0.045 110);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.96 0.018 125);
-    --border: oklch(0.7 0.055 145);
-    --input: oklch(0.7 0.055 145);
-    --ring: oklch(0.52 0.11 150);
-    --warning: oklch(0.72 0.16 75);
-    --warning-foreground: oklch(0.28 0.06 75);
-    --category-security: var(--destructive);
-    --category-water: oklch(0.48 0.12 220);
-    --category-sewage: oklch(0.42 0.08 75);
-    --category-waste: oklch(0.48 0.035 145);
-    --category-pollution: oklch(0.42 0.1 160);
-    --category-road: oklch(0.52 0.13 55);
-    --category-encroachment: oklch(0.48 0.1 315);
-    --category-green: oklch(0.48 0.14 145);
-    --category-other: var(--foreground);
-    --chart-primary: var(--primary);
-    --chart-primary-soft: oklch(0.38 0.12 150 / 0.12);
-    --chart-grid: oklch(0.4 0.04 145 / 0.35);
-    --chart-axis: var(--muted-foreground);
-    --chart-cursor: oklch(0.2 0.04 145 / 0.08);
-    --radius: 0.625rem;
+  /* ---------------------------------------------------------------------
+     Accent themes
+     ---------------------------------------------------------------------
+     A theme is two numbers: a hue and a chroma. Everything else - surfaces,
+     ink, brand ramp, focus ring, chart ink - is derived from them, so a new
+     theme is one declaration rather than a second palette to maintain.
 
-    color-scheme: light;
+     Hues are fixed per theme; the light and dark steps of each role are
+     chosen separately (dark mode is a selected palette, never an inverted
+     one) and validated against their own surface.
+     --------------------------------------------------------------------- */
+
+  :root {
+    --brand-hue: 152;
+    --brand-chroma: 0.115;
+    --radius: 0.75rem;
   }
 
-  .dark {
-    /* Deep Forest & Fern Theme (Dark Mode) */
-    --background: oklch(0.16 0.04 150);
-    --foreground: oklch(0.94 0.025 135);
-    --card: oklch(0.21 0.045 145);
-    --card-foreground: oklch(0.94 0.025 135);
-    --popover: oklch(0.22 0.05 135);
-    --popover-foreground: oklch(0.94 0.025 135);
-    --primary: oklch(0.68 0.15 150);
-    --primary-foreground: oklch(0.16 0.04 150);
-    --secondary: oklch(0.27 0.05 145);
-    --secondary-foreground: oklch(0.94 0.025 135);
-    --muted: oklch(0.25 0.045 145);
-    --muted-foreground: oklch(0.72 0.05 140);
-    --accent: oklch(0.32 0.07 105);
-    --accent-foreground: oklch(0.94 0.025 135);
-    --destructive: oklch(0.704 0.191 22.216);
-    --destructive-foreground: oklch(0.96 0.02 135);
-    --border: oklch(0.34 0.055 145);
-    --input: oklch(0.34 0.055 145);
-    --ring: oklch(0.68 0.15 150);
-    --warning: oklch(0.78 0.15 85);
-    --warning-foreground: oklch(0.22 0.05 85);
-    --category-security: var(--destructive);
-    --category-water: oklch(0.72 0.13 220);
-    --category-sewage: oklch(0.7 0.1 75);
-    --category-waste: oklch(0.72 0.04 145);
-    --category-pollution: oklch(0.7 0.11 160);
-    --category-road: oklch(0.74 0.14 55);
-    --category-encroachment: oklch(0.72 0.11 315);
-    --category-green: oklch(0.72 0.14 145);
-    --category-other: var(--foreground);
-    --chart-primary: var(--primary);
-    --chart-primary-soft: oklch(0.68 0.15 150 / 0.18);
-    --chart-grid: oklch(0.7 0.04 145 / 0.35);
-    --chart-axis: var(--muted-foreground);
-    --chart-cursor: oklch(0.95 0.02 145 / 0.08);
+  [data-accent="moss"] {
+    --brand-hue: 152;
+    --brand-chroma: 0.115;
+  }
+  [data-accent="ocean"] {
+    --brand-hue: 244;
+    --brand-chroma: 0.125;
+  }
+  [data-accent="ember"] {
+    --brand-hue: 42;
+    --brand-chroma: 0.115;
+  }
+  [data-accent="plum"] {
+    --brand-hue: 318;
+    --brand-chroma: 0.125;
+  }
+  [data-accent="indigo"] {
+    --brand-hue: 274;
+    --brand-chroma: 0.13;
+  }
+  [data-accent="slate"] {
+    --brand-hue: 250;
+    --brand-chroma: 0.035;
+  }
 
+  /* ---------------------------------------------------------------------
+     Light mode
+     --------------------------------------------------------------------- */
+  :root {
+    color-scheme: light;
+
+    --background: oklch(0.968 0.008 var(--brand-hue));
+    --foreground: oklch(0.235 0.015 var(--brand-hue));
+
+    --card: oklch(0.995 0.005 var(--brand-hue));
+    --card-foreground: var(--foreground);
+    --popover: oklch(0.995 0.005 var(--brand-hue));
+    --popover-foreground: var(--foreground);
+
+    --surface: oklch(0.995 0.005 var(--brand-hue));
+    --surface-raised: oklch(0.945 0.011 var(--brand-hue));
+
+    --primary: oklch(0.5 var(--brand-chroma) var(--brand-hue));
+    --primary-foreground: oklch(0.995 0.004 var(--brand-hue));
+
+    --secondary: oklch(0.93 0.02 var(--brand-hue));
+    --secondary-foreground: oklch(0.3 0.04 var(--brand-hue));
+
+    --muted: oklch(0.945 0.011 var(--brand-hue));
+    --muted-foreground: oklch(0.505 0.018 var(--brand-hue));
+
+    --accent: oklch(0.945 calc(var(--brand-chroma) * 0.28) var(--brand-hue));
+    --accent-foreground: oklch(0.4 calc(var(--brand-chroma) * 0.85) var(--brand-hue));
+
+    --destructive: oklch(0.577 0.208 27.3);
+    --destructive-foreground: oklch(0.995 0.005 250);
+    --success: oklch(0.55 0.15 145);
+    --success-foreground: oklch(0.995 0.005 145);
+    --warning: oklch(0.72 0.16 75);
+    --warning-foreground: oklch(0.26 0.05 75);
+
+    --border: oklch(0.87 0.014 var(--brand-hue));
+    --border-strong: oklch(0.77 0.018 var(--brand-hue));
+    --input: oklch(0.87 0.014 var(--brand-hue));
+    --ring: oklch(0.55 var(--brand-chroma) var(--brand-hue));
+
+    /* Inverted surface, used by the side rails so they read as a distinct
+       plane in both modes. */
+    --inverse-surface: oklch(0.26 0.022 var(--brand-hue));
+    --inverse-surface-raised: oklch(0.31 0.024 var(--brand-hue));
+    --inverse-foreground: oklch(0.97 0.006 var(--brand-hue));
+    --inverse-muted: oklch(0.78 0.02 var(--brand-hue));
+    --inverse-border: oklch(0.36 0.024 var(--brand-hue));
+
+    /* Chart chrome */
+    --chart-grid: oklch(0.87 0.012 var(--brand-hue));
+    --chart-axis: oklch(0.505 0.018 var(--brand-hue));
+    --chart-cursor: oklch(0.235 0.015 var(--brand-hue) / 0.06);
+    --chart-surface: var(--card);
+
+    /* Category identity colours - five service families.
+       The map is an all-pairs form (any two pins can sit side by side), so the
+       category hues have to clear the colourblind and normal-vision floors for
+       EVERY pair, not just neighbouring ones. Nine per-category hues could
+       not - red/orange and aqua/pink collapsed - so the categories fold into
+       families and each family takes one hue. The specific category is always
+       carried by its icon and its label, never by colour alone.
+
+       Hues follow Kenyan utility-map convention: potable water is blue, road
+       works orange, waste and greening green, security red.
+
+       These values were computed and validated, not eyeballed: worst all-pairs
+       CVD Delta E 8.3 (deutan) and normal-vision Delta E 15.1 in light mode,
+       8.2 and 15.5 in dark. See tools/category-palette.mjs.
+
+       "other" is the residual bucket, not a sixth identity, so it takes a
+       neutral rather than a hue. A mid grey does not work here - it collapses
+       into the environment hue under simulated colour-vision deficiency - so
+       the neutral is pitched clear of the family band in lightness instead:
+       normal-vision Delta E 24.3 and CVD 11.3 in light, 17.3 and 10.3 in
+       dark. See tools/verify-palette.mjs. */
+    --category-security: #c6423b;
+    --category-water: #2078da;
+    --category-works: #f67742;
+    --category-environment: #00b07f;
+    --category-pollution: #f677b8;
+    --category-other: #3f454d;
+
+    /* Ink that sits *on* each category fill - the pin glyph. */
+    --category-security-ink: #ffffff;
+    --category-water-ink: #ffffff;
+    --category-works-ink: #0b0b0b;
+    --category-environment-ink: #0b0b0b;
+    --category-pollution-ink: #0b0b0b;
+    --category-other-ink: #ffffff;
+
+    /* Status pipeline - an ordered scale, so it takes one hue in stepped
+       lightness rather than categorical hues. The step nearest the surface
+       (status-1, the lightest here) clears 2:1 against it for every accent,
+       and adjacent steps sit at least 0.06 apart in lightness so each stage
+       reads separately. See tools/status-ramp.mjs. */
+    --status-1: oklch(0.77 calc(var(--brand-chroma) * 0.55) var(--brand-hue));
+    --status-2: oklch(0.702 calc(var(--brand-chroma) * 0.7) var(--brand-hue));
+    --status-3: oklch(0.634 calc(var(--brand-chroma) * 0.85) var(--brand-hue));
+    --status-4: oklch(0.566 calc(var(--brand-chroma) * 0.95) var(--brand-hue));
+    --status-5: oklch(0.498 var(--brand-chroma) var(--brand-hue));
+    --status-1-ink: oklch(0.3 0.04 var(--brand-hue));
+    --status-2-ink: oklch(0.3 0.04 var(--brand-hue));
+    --status-3-ink: oklch(0.3 0.04 var(--brand-hue));
+    --status-4-ink: oklch(0.99 0.004 var(--brand-hue));
+    --status-5-ink: oklch(0.99 0.004 var(--brand-hue));
+  }
+
+  /* ---------------------------------------------------------------------
+     Dark mode - its own selected steps, never an automatic flip
+     --------------------------------------------------------------------- */
+  .dark {
     color-scheme: dark;
+
+    --background: oklch(0.175 0.013 var(--brand-hue));
+    --foreground: oklch(0.955 0.006 var(--brand-hue));
+
+    --card: oklch(0.222 0.015 var(--brand-hue));
+    --card-foreground: var(--foreground);
+    --popover: oklch(0.235 0.016 var(--brand-hue));
+    --popover-foreground: var(--foreground);
+
+    --surface: oklch(0.222 0.015 var(--brand-hue));
+    --surface-raised: oklch(0.268 0.017 var(--brand-hue));
+
+    --primary: oklch(0.74 calc(var(--brand-chroma) * 0.92) var(--brand-hue));
+    --primary-foreground: oklch(0.2 0.02 var(--brand-hue));
+
+    --secondary: oklch(0.3 0.02 var(--brand-hue));
+    --secondary-foreground: oklch(0.95 0.01 var(--brand-hue));
+
+    --muted: oklch(0.268 0.017 var(--brand-hue));
+    --muted-foreground: oklch(0.7 0.016 var(--brand-hue));
+
+    --accent: oklch(0.3 calc(var(--brand-chroma) * 0.4) var(--brand-hue));
+    --accent-foreground: oklch(0.88 calc(var(--brand-chroma) * 0.45) var(--brand-hue));
+
+    --destructive: oklch(0.62 0.2 25);
+    --destructive-foreground: oklch(0.16 0.02 25);
+    --success: oklch(0.68 0.16 145);
+    --success-foreground: oklch(0.16 0.02 145);
+    --warning: oklch(0.78 0.15 80);
+    --warning-foreground: oklch(0.2 0.05 80);
+
+    --border: oklch(0.36 0.021 var(--brand-hue));
+    --border-strong: oklch(0.45 0.022 var(--brand-hue));
+    --input: oklch(0.36 0.021 var(--brand-hue));
+    --ring: oklch(0.7 calc(var(--brand-chroma) * 0.9) var(--brand-hue));
+
+    --inverse-surface: oklch(0.16 0.012 var(--brand-hue));
+    --inverse-surface-raised: oklch(0.21 0.014 var(--brand-hue));
+    --inverse-foreground: oklch(0.96 0.006 var(--brand-hue));
+    --inverse-muted: oklch(0.72 0.018 var(--brand-hue));
+    --inverse-border: oklch(0.28 0.018 var(--brand-hue));
+
+    --chart-grid: oklch(0.32 0.018 var(--brand-hue));
+    --chart-axis: oklch(0.7 0.016 var(--brand-hue));
+    --chart-cursor: oklch(0.955 0.006 var(--brand-hue) / 0.08);
+    --chart-surface: var(--card);
+
+    --category-security: #eb6459;
+    --category-water: #3186e9;
+    --category-works: #a23a00;
+    --category-environment: #00a376;
+    --category-pollution: #b73e81;
+    --category-other: #a3aeb9;
+
+    --category-security-ink: #0b0b0b;
+    --category-water-ink: #0b0b0b;
+    --category-works-ink: #ffffff;
+    --category-environment-ink: #0b0b0b;
+    --category-pollution-ink: #ffffff;
+    --category-other-ink: #0b0b0b;
+
+    --status-1: oklch(0.424 calc(var(--brand-chroma) * 0.55) var(--brand-hue));
+    --status-2: oklch(0.492 calc(var(--brand-chroma) * 0.7) var(--brand-hue));
+    --status-3: oklch(0.56 calc(var(--brand-chroma) * 0.85) var(--brand-hue));
+    --status-4: oklch(0.628 calc(var(--brand-chroma) * 0.95) var(--brand-hue));
+    --status-5: oklch(0.696 var(--brand-chroma) var(--brand-hue));
+    --status-1-ink: oklch(0.99 0.004 var(--brand-hue));
+    --status-2-ink: oklch(0.99 0.004 var(--brand-hue));
+    --status-3-ink: oklch(0.99 0.004 var(--brand-hue));
+    --status-4-ink: oklch(0.16 0.02 var(--brand-hue));
+    --status-5-ink: oklch(0.16 0.02 var(--brand-hue));
   }
 
   * {
@@ -144,8 +312,23 @@
     background-color: var(--background);
     color: var(--foreground);
     transition:
-      background-color 0.2s ease,
-      color 0.2s ease;
+      background-color 0.22s ease,
+      color 0.22s ease;
+  }
+
+  /* Theme and accent changes cross-fade rather than snap. */
+  body,
+  .theme-surface,
+  header,
+  aside,
+  main,
+  [data-slot="card"] {
+    transition:
+      background-color 0.22s ease,
+      border-color 0.22s ease,
+      color 0.22s ease,
+      fill 0.22s ease,
+      stroke 0.22s ease;
   }
 }
 
@@ -153,6 +336,33 @@
 :where(button, a, input, select, textarea):focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--muted-foreground) 35%, transparent);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--primary) 60%, transparent);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }
 
 /* Leaflet & Map Container Layout Fixes */
@@ -171,14 +381,111 @@
   font-family: var(--font-sans) !important;
 }
 
+/* ---------------------------------------------------------------------
+   Leaflet chrome, restyled onto the app's tokens.
+
+   Leaflet ships its controls in a fixed OS grey that reads as a foreign
+   object in a themed app - and in dark mode it is a bright rectangle
+   sitting on a dark map. Every control below is re-skinned from the
+   tokens, so the map chrome changes with the theme like everything else.
+   --------------------------------------------------------------------- */
+
+.leaflet-bar,
+.leaflet-control {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.leaflet-control-zoom {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lifted);
+  overflow: hidden;
+}
+
+.leaflet-control-zoom a {
+  width: 30px;
+  height: 30px;
+  line-height: 28px;
+  background-color: var(--card);
+  color: var(--foreground);
+  border-bottom: 1px solid var(--border);
+  font-size: 16px;
+  font-weight: 500;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.leaflet-control-zoom a:hover,
+.leaflet-control-zoom a:focus-visible {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.leaflet-control-zoom a.leaflet-disabled {
+  background-color: var(--card);
+  color: var(--muted-foreground);
+  opacity: 0.5;
+}
+
+.leaflet-control-attribution {
+  background: color-mix(in oklab, var(--card) 85%, transparent) !important;
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 1.6;
+  padding: 1px 6px;
+  border-radius: var(--radius-sm) 0 0 0;
+  backdrop-filter: blur(4px);
+}
+
+.leaflet-control-attribution a {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* The scale bar, so a reader can judge distance on the map rather than
+   having to trust it. */
+.leaflet-control-scale-line {
+  background: color-mix(in oklab, var(--card) 85%, transparent);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  padding: 1px 6px;
+  font-size: 10px;
+  line-height: 1.4;
+  backdrop-filter: blur(4px);
+}
+
+/* The permanent label on the estate boundary. */
+.map-boundary-label {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--foreground);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-shadow:
+    0 1px 2px color-mix(in oklab, var(--background) 90%, transparent),
+    0 0 6px color-mix(in oklab, var(--background) 70%, transparent);
+  pointer-events: none;
+}
+
+.leaflet-tooltip.map-boundary-label::before {
+  display: none;
+}
+
 .leaflet-popup-content-wrapper {
   background-color: var(--popover) !important;
   color: var(--popover-foreground) !important;
   border: 1px solid var(--border);
   border-radius: var(--radius) !important;
-  box-shadow:
-    0 10px 15px -3px color-mix(in oklch, var(--foreground) 10%, transparent),
-    0 4px 6px -4px color-mix(in oklch, var(--foreground) 10%, transparent) !important;
+  box-shadow: var(--shadow-floating) !important;
   padding: 0 !important;
   overflow: hidden;
 }
@@ -203,22 +510,20 @@
   color: var(--foreground) !important;
 }
 
-/* Custom Sleek Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Map pins carry a category icon; the pin ring keeps them readable against
+   any basemap tile. */
+.custom-category-pin {
+  background: transparent !important;
+  border: none !important;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+.leaflet-div-icon {
+  border: none !important;
+  background: transparent !important;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--muted-foreground);
-  opacity: 0.3;
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--primary);
+/* Recharts focus/hover outline */
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none;
 }
